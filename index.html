@@ -583,7 +583,7 @@
         ]
       },
       {
-        q: '6. สัญลักษณ์ทางฟิสส์รูปตัวอักษรที่มีหัวลูกศรชี้ไปทางขวาด้านบน (เช่น [s], [v]) ใช้แทนสิ่งใด?',
+        q: '6. สัญลักษณ์ทางฟิสิกส์รูปตัวอักษรที่มีหัวลูกศรชี้ไปทางขวาด้านบน (เช่น [s], [v]) ใช้แทนสิ่งใด?',
         options: [
           { text: 'A: แสดงทิศทางไปข้างหน้าเท่านั้น', correct: false },
           { text: 'B: ปริมาณเวกเตอร์ ที่ต้องการบอกขนาดและทิศทาง', correct: true },
@@ -2130,7 +2130,7 @@
         tag.innerHTML = renderMathInText("ภารกิจฝึกอบรม");
         title.innerHTML = renderMathInText("เริ่มต้นใช้งาน: ทดสอบระบบตรวจจับมือ AR");
         desc.innerHTML = renderMathInText("ยื่นมือขึ้นหน้ากล้องขยับปลายนิ้วชี้เพื่อจับพิกัด หรือคลิกสลับโหมดควบคุมเมาส์ด้านล่างกล้อง");
-        btnActionText.innerHTML = renderMathInText("ข้ามไปยังบทเรียนจำลอง");
+        btnActionText.innerHTML = renderMathInText("ข้ามไปยังภารกิจที่ 1");
       } 
       else if (phase === 'path_intro' || phase === 'path_case1' || phase === 'path_case2' || phase === 'path_case3' || phase === 'path_result') {
         document.getElementById('step-dist').className = "p-2.5 rounded border border-cyan-400/30 bg-cyan-950/20 text-cyan-300 flex items-center gap-2";
@@ -2138,7 +2138,7 @@
         // ✨ เรนเดอร์สัญลักษณ์เวกเตอร์ด้วย KaTeX สวยงามตรงหัวข้อด้านล่าง
         title.innerHTML = renderMathInText("กิจกรรม 2 กรณีท้าทาย: ระยะทาง ($s$) vs การกระจัด ($\\vec{s}$)");
         desc.innerHTML = renderMathInText("ลากเส้นพิสูจน์ สังเกตการแปรผันของสูตรคำนวณอัตราเร็ว ($v$) และความเร็ว ($\\vec{v}$) ที่คำนวณสดจากภารกิจที่ 1 ด้านซ้าย");
-        btnActionText.innerHTML = (phase === 'path_result') ? renderMathInText("เข้าสู่ภารกิจเก็บคริสตัล") : renderMathInText("ข้าม");
+        btnActionText.innerHTML = (phase === 'path_result') ? renderMathInText("เข้าสู่ภารกิจนักล่าปริมาณเวกเตอร์") : renderMathInText("ข้าม");
         
         // กำหนด Scenario เพิ่มเติม
         if (phase === 'path_case1') currentScenarioIndex = 0;
@@ -2509,7 +2509,7 @@
         // ✨ เรนเดอร์สัญลักษณ์เวกเตอร์ด้วย KaTeX บนรายการเมนูขั้นตอนภารกิจซ้ายมือ
         document.getElementById('step-tut-text').innerHTML = renderMathInText("แนะนำ & ทดสอบระบบตรวจมือ");
         document.getElementById('step-dist-text').innerHTML = renderMathInText("ภารกิจ 1: 2 กรณีท้าทาย ($s$ vs $\\vec{s}$)");
-        document.getElementById('step-catch-text').innerHTML = renderMathInText("ภารกิจ 2: นักล่าปริมาณเวกเตอร์ ($\\vec{v}$)");
+        document.getElementById('step-catch-text').innerHTML = renderMathInText("ภารกิจ 2: นักล่าปริมาณเวกเตอร์)");
         document.getElementById('step-quiz-text').innerHTML = renderMathInText("แบบประเมินผลสัมฤทธิ์ (10 ข้อ)");
       } catch (e) {
         console.error("LaTeX rendering failed on load", e);
