@@ -1,0 +1,2525 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AR VST-Sci: ความเร็วและอัตราเร็ว ม.2</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Lucide Icons (สำหรับไอคอน HUD) -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- MediaPipe Hands Aligned Stable Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  
+  <!-- KaTeX (สำหรับแสดงสูตรฟิสิกส์ที่สวยงาม) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Chakra+Petch:wght=300;400;500;600;700&display=swap');
+    
+    body {
+      font-family: 'Chakra Petch', sans-serif;
+      background-color: #020617;
+      color: #f1f5f9;
+      overflow-x: hidden;
+    }
+
+    /* สไตล์ HUD สไตล์ไซไฟ */
+    .hud-panel {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(0, 240, 255, 0.2);
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.1);
+    }
+    
+    .hud-glow-cyan {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.6);
+      text-shadow: 0 0 10px rgba(6, 182, 212, 0.6);
+    }
+
+    .hud-glow-pink {
+      box-shadow: 0 0 15px rgba(236, 72, 153, 0.6);
+      text-shadow: 0 0 10px rgba(236, 72, 153, 0.6);
+    }
+
+    /* ตารางเบื้องหลังแบบไซไฟ */
+    .grid-bg {
+      background-image: 
+        linear-gradient(rgba(6, 182, 212, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(6, 182, 212, 0.05) 1px, transparent 1px);
+      background-size: 40px 40px;
+    }
+
+    /* ซ่อนแถบเลื่อนบนเบราว์เซอร์ */
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(6, 182, 212, 0.3);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="grid-bg min-h-screen flex flex-col justify-between">
+
+  <!-- ==================== HEADER HUD ==================== -->
+  <header class="w-full px-6 py-4 flex flex-wrap justify-between items-center hud-panel border-b border-cyan-500/20 z-20 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="p-2 bg-cyan-950/50 rounded-lg border border-cyan-400/30 animate-pulse">
+        <i data-lucide="orbit" class="w-8 h-8 text-cyan-400"></i>
+      </div>
+      <div>
+        <h1 class="text-xl font-bold uppercase tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500">
+          AR VST-Sci
+        </h1>
+        <p class="text-xs text-slate-400 font-mono">ม.2: อัตราเร็ว & ความเร็ว (Speed vs Velocity)</p>
+      </div>
+    </div>
+
+    <!-- HUD Status Indicators -->
+    <div class="flex items-center gap-4 mt-2 sm:mt-0 font-mono text-sm">
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-slate-900/60 border border-slate-700">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+        <span class="text-xs text-slate-300">คะแนน: <span id="hud-score" class="font-bold text-amber-400">0</span> XP</span>
+      </div>
+      <div class="flex items-center gap-2 px-3 py-1.5 rounded bg-slate-900/60 border border-slate-700">
+        <i data-lucide="video" class="w-4 h-4 text-cyan-400" id="cam-icon"></i>
+        <span class="text-xs text-slate-300">สถานะ: <span id="hud-camera-status" class="text-amber-400">กำลังตรวจจับ...</span></span>
+      </div>
+      <button id="btn-knowledge" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-400/40 text-yellow-400 hover:text-yellow-300 transition text-xs font-sans shadow-lg shadow-yellow-500/10 animate-pulse">
+        <i data-lucide="book-open" class="w-4 h-4 text-yellow-400"></i>
+        คลังความรู้
+      </button>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENTS ==================== -->
+  <main class="flex-1 w-full max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-4 gap-6 z-10 relative">
+    
+    <!-- LEFT PANEL: แผงควบคุมสถิติและ AI ติวเตอร์ -->
+    <section class="lg:col-span-1 flex flex-col gap-4">
+      
+      <!-- บอร์ดความคืบหน้าภารกิจ -->
+      <div class="hud-panel p-5 rounded-xl flex flex-col gap-3">
+        <h2 class="text-md font-bold text-slate-200 uppercase tracking-widest border-b border-slate-700 pb-2 flex items-center justify-between">
+          <span>ความคืบหน้าภารกิจ</span>
+          <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+        </h2>
+        
+        <div class="flex flex-col gap-2 font-mono text-sm">
+          <div id="step-tut" class="p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2">
+            <span class="w-5 h-5 flex items-center justify-center rounded-full bg-slate-800 text-xs border border-slate-700">1</span>
+            <span id="step-tut-text">แนะนำ & ทดสอบระบบตรวจมือ</span>
+          </div>
+          <div id="step-dist" class="p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2">
+            <span class="w-5 h-5 flex items-center justify-center rounded-full bg-slate-800 text-xs border border-slate-700">2</span>
+            <span id="step-dist-text">ภารกิจ 1: 2 กรณีท้าทาย</span>
+          </div>
+          <div id="step-catch" class="p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2">
+            <span class="w-5 h-5 flex items-center justify-center rounded-full bg-slate-800 text-xs border border-slate-700">3</span>
+            <span id="step-catch-text">ภารกิจ 2: นักล่าปริมาณเวกเตอร์</span>
+          </div>
+          <div id="step-quiz" class="p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2">
+            <span class="w-5 h-5 flex items-center justify-center rounded-full bg-slate-800 text-xs border border-slate-700">4</span>
+            <span id="step-quiz-text">แบบประเมินผลสัมฤทธิ์ (10 ข้อ)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- บอร์ดสูตรฟิสิกส์ & AI ติวเตอร์แบบแท็บ -->
+      <div class="hud-panel rounded-xl flex-1 flex flex-col overflow-hidden min-h-[350px]">
+        <!-- แถบสลับแท็บ -->
+        <div class="flex border-b border-slate-700 bg-slate-950/60 text-xs font-mono shrink-0">
+          <button id="tab-btn-sandbox" class="flex-1 py-3 text-center border-b-2 border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20 transition-all flex items-center justify-center gap-1.5">
+            <i data-lucide="calculator" class="w-3.5 h-3.5"></i>
+            📊 คำนวณสดจากภารกิจที่ 1
+          </button>
+          <button id="tab-btn-ai" class="flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5 relative">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-yellow-400"></i>
+            ครูพี่ AI ติวเตอร์
+            <span id="ai-notif" class="absolute top-1 right-2 w-2 h-2 rounded-full bg-yellow-500 hidden animate-ping"></span>
+          </button>
+        </div>
+
+        <!-- เนื้อหาภายในแท็บ -->
+        <div class="flex-1 p-4 flex flex-col justify-between overflow-y-auto">
+          
+          <!-- TAB 1: แดชบอร์ดสูตรคำนวณสดจากภารกิจที่ 1 -->
+          <div id="tab-content-sandbox" class="space-y-3 flex-1 flex flex-col justify-between">
+            <div class="space-y-3">
+              <!-- อัตราเร็ว -->
+              <div class="bg-slate-950/60 p-3 rounded-lg border border-cyan-500/20">
+                <div class="text-xs text-cyan-400 font-semibold mb-1 flex items-center gap-1">สเกลาร์: อัตราเร็ว (<span id="katex-v-scalar-title-label"></span>)</div>
+                <div id="katex-speed" class="text-center py-1.5 border border-dashed border-slate-800 rounded bg-slate-950 text-sm">สูตรอิงระยะทางจริง</div>
+                <div class="text-xs text-slate-400 mt-1 flex justify-between">
+                  <span>ระยะทาง (<span id="katex-s-label"></span>): <span id="calc-s" class="text-cyan-300 font-bold">-</span> ม.</span>
+                  <span>เวลา (<span id="katex-t-speed-label"></span>): <span id="calc-t" class="text-cyan-300 font-bold">-</span> วิ</span>
+                </div>
+              </div>
+
+              <!-- ความเร็ว -->
+              <div class="bg-slate-950/60 p-3 rounded-lg border border-fuchsia-500/20">
+                <div class="text-xs text-fuchsia-400 font-semibold mb-1 flex items-center gap-1">เวกเตอร์: ความเร็ว (<span id="katex-v-vec-title-label"></span>)</div>
+                <div id="katex-velocity" class="text-center py-1.5 border border-dashed border-slate-800 rounded bg-slate-950 text-sm">สูตรอิงการกระจัดตรง</div>
+                <div class="text-xs text-slate-400 mt-1 flex flex-col gap-1">
+                  <div class="flex justify-between">
+                    <span>การกระจัด (<span id="katex-disp-label"></span>): <span id="calc-disp" class="text-fuchsia-300 font-bold">-</span> ม.</span>
+                    <span>เวลา (<span id="katex-t-velocity-label"></span>): <span id="calc-t-v" class="text-fuchsia-300 font-bold">-</span> วิ</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span>ทิศทาง: <span id="calc-dir" class="text-fuchsia-300 font-bold">-</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="text-2xs text-slate-500 text-center font-mono mt-1 shrink-0">
+              * เมื่อลากเส้นระยะทางและการกระจัดในกิจกรรมที่ 1 จะนำค่าที่ได้มาคำนวณตรงนี้ทันที
+            </div>
+          </div>
+
+          <!-- TAB 2: ครูพี่ AI ติวเตอร์อัจฉริยะ -->
+          <div id="tab-content-ai" class="hidden flex-1 flex flex-col justify-between gap-3 h-full">
+            <!-- หน้าต่างข้อความแชท -->
+            <div class="flex-1 min-h-[180px] bg-slate-950/70 rounded-lg border border-slate-800 p-2.5 text-xs overflow-y-auto space-y-2.5 flex flex-col" id="ai-chat-log">
+              <div class="p-2 rounded bg-fuchsia-950/20 border border-fuchsia-500/20 text-slate-300">
+                <strong>🤖 ครูพี่ AI:</strong> สวัสดีจ้า! พี่คือ AI ติวเตอร์ฟิสิกส์ส่วนตัว มีคำถามสงสัย หรืออยากให้วิเคราะห์ผลการทำกิจกรรม AR ตัวไหน ถามพี่มาได้ทันทีเลยน้า! ✨
+              </div>
+            </div>
+
+            <!-- ปุ่มทางลัดวิเคราะห์ผล -->
+            <button id="btn-ai-analyze" class="w-full py-1.5 rounded bg-gradient-to-r from-yellow-600 to-amber-600 hover:from-yellow-500 hover:to-amber-500 text-xs font-semibold text-slate-950 transition flex items-center justify-center gap-1 shadow-lg shadow-yellow-500/10 border border-yellow-400/20">
+              <span>✨ วิเคราะห์ผล ✨</span>
+            </button>
+
+            <!-- ช่องพิมพ์คำถามส่งหา AI -->
+            <div class="flex gap-1 shrink-0">
+              <input type="text" id="ai-chat-input" placeholder="ถามฟิสิกส์ เช่น เวกเตอร์คืออะไร..." class="flex-1 px-2.5 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-500">
+              <button id="btn-ai-send" class="px-3 py-1.5 rounded bg-yellow-500 hover:bg-yellow-400 text-xs font-bold text-slate-950 transition flex items-center justify-center">
+                <span>✨ ถาม</span>
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTER & RIGHT: หน้าจอ AR และควบคุมหลัก -->
+    <section class="lg:col-span-3 flex flex-col gap-4">
+      
+      <!-- ย้ายปุ่มควบคุมการเดินหน้า (ข้ามด่าน) และปุ่มถอยหลัง มาไว้ด้านบนหน้าจอ AR เพื่อความชัดเจน 100% -->
+      <div class="hud-panel p-3 px-5 rounded-xl flex items-center justify-between border border-cyan-500/30">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-ping"></span>
+          <span class="text-sm font-semibold tracking-wider text-cyan-400 font-mono">ภารกิจ</span>
+        </div>
+        <div class="flex items-center gap-2.5 shrink-0">
+          <button id="btn-prev" class="p-2.5 rounded-lg border border-slate-700 bg-slate-800/40 hover:bg-slate-700 transition disabled:opacity-30 disabled:cursor-not-allowed">
+            <i data-lucide="chevron-left" class="w-5 h-5 text-white"></i>
+          </button>
+          <button id="btn-action" class="px-6 py-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-500 text-slate-950 hover:from-yellow-400 hover:to-amber-400 font-bold transition flex items-center gap-2 shadow-lg shadow-yellow-500/25 border border-yellow-400/20">
+            <span id="btn-action-text">ข้ามไปยังภารกิจที่ 1</span>
+            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+      
+      <!-- พื้นที่หน้าจอหลัก (AR Canvas + Web Camera Feed) -->
+      <div class="relative w-full aspect-video rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 shadow-2xl flex items-center justify-center">
+        
+        <!-- ฟีดวิดีโกล้องเว็บแคม -->
+        <video id="webcam" class="absolute w-full h-full object-cover scale-x-[-1] opacity-0" autoplay playsinline muted></video>
+        
+        <!-- Canvas วาดหน้าจอ AR และตรวจจับมือหลัก -->
+        <canvas id="output_canvas" class="absolute top-0 left-0 w-full h-full object-cover z-10"></canvas>
+
+        <!-- UI ยืนยันสิทธิ์เปิดกล้องแบบแมนนวล -->
+        <div id="camera-prompt-overlay" class="absolute inset-0 bg-slate-950/90 z-20 flex flex-col items-center justify-center p-6 text-center transition-all duration-300">
+          <div class="p-4 bg-cyan-950/40 rounded-full border border-cyan-400/40 mb-4 animate-bounce">
+            <i data-lucide="video" class="w-12 h-12 text-cyan-400"></i>
+          </div>
+          <h3 class="text-lg font-bold text-white mb-2">เข้าสู่ห้องทดลองฟิสิกส์เสมือนจริง AR</h3>
+          <p class="text-xs text-slate-400 max-w-sm mb-6 leading-relaxed">
+            ระบบใช้กล้องหน้าตรวจวัดปลายนิ้วชี้เพื่อจับค่าสัมประสิทธิ์ฟิสิกส์ ม.2 แบบอินเตอร์แอคทีฟ (หากไม่มีกล้องสามารถกดสลับโหมดจำลองตรงด้านล่างได้ทันทีและลากนิ้วบนหน้าจอได้)
+          </p>
+          <div class="flex flex-col sm:flex-row gap-3 w-full max-w-xs">
+            <button id="btn-start-ar" class="flex-1 py-3 rounded-lg bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 font-bold text-sm hover:from-cyan-400 hover:to-blue-400 transition shadow-lg shadow-cyan-500/20">
+              🔌 เริ่มโหมดกล้อง AR
+            </button>
+            <button id="btn-skip-ar" class="flex-1 py-3 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition">
+              ใช้โหมดจำลอง (Simulator)
+            </button>
+          </div>
+        </div>
+
+        <!-- UI ตัวเลือกการทำงานด่วนซ้อนทับภาพ (Interactive Overlay HUD) -->
+        <div class="absolute bottom-4 left-4 right-4 z-10 flex flex-wrap gap-2 items-center justify-between pointer-events-auto">
+          <!-- สวิตช์สลับโหมดกล้อง / เมาส์จำลอง -->
+          <button id="btn-toggle-input" class="pointer-events-auto px-3 py-2 rounded-lg bg-slate-950/90 text-amber-400 hover:text-white border border-amber-500/30 hover:bg-slate-900 transition flex items-center gap-2 text-xs backdrop-blur">
+            <i data-lucide="mouse-pointer-click" id="input-mode-icon" class="w-4 h-4"></i>
+            <span>โหมดควบคุม: <span id="input-mode-text" class="font-bold">ระบบตรวจมือ (Hand Tracking)</span></span>
+          </button>
+
+          <!-- ตัวบอกสถานะของตัวชี้นิ้ว -->
+          <div class="px-3 py-2 rounded-lg bg-slate-950/90 border border-cyan-500/30 text-cyan-400 text-xs font-mono backdrop-blur flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400" id="ptr-indicator"></span>
+            <span>ตัวชี้: <span id="ptr-status">มองไม่เห็นมือ</span></span>
+          </div>
+        </div>
+
+        <!-- ✨ ปรับย้ายพิกัดกล่องแจ้งเตือน Toast มาอยู่ใต้กล่องข้อความด้านบนพอดี (top-[110px]) เพื่อไม่ให้รกสายตากึ่งกลางจอ และใช้ scale-95 เพื่อความลื่นไหลของอนิเมชัน -->
+        <div id="ar-toast" class="absolute top-[110px] left-1/2 transform -translate-x-1/2 z-20 px-6 py-2 rounded-full bg-slate-950/90 border border-cyan-500/40 text-cyan-300 text-sm font-semibold shadow-lg backdrop-blur flex items-center gap-2 opacity-0 scale-95 transition-all duration-300 pointer-events-none">
+          <i data-lucide="bell" class="w-4 h-4 text-cyan-400"></i>
+          <span id="ar-toast-msg">ยินดีต้อนรับสู่ห้องทดลองฟิสิกส์ AR!</span>
+        </div>
+      </div>
+
+      <!-- บอร์ดควบคุมด้านล่าง (Bottom Operations / Dashboard Controls) -->
+      <div class="hud-panel p-5 rounded-2xl flex flex-wrap gap-4 justify-between items-center">
+        <div>
+          <h3 class="text-sm font-mono text-cyan-400 uppercase tracking-widest" id="phase-tag">ภารกิจฝึกอบรม</h3>
+          <h2 class="text-lg font-bold text-slate-100" id="phase-title">เริ่มต้นใช้งาน: ทดสอบระบบตรวจจับมือ AR</h2>
+          <p class="text-xs text-slate-400 mt-1 max-w-xl" id="phase-desc">
+            ยื่นมือข้างใดข้างหนึ่งขึ้นหน้ากล้องเว็บบอร์ด แล้วขยับปลายนิ้วชี้เพื่อบังคับพอยน์เตอร์ไซไฟสีเขียว หากไม่มีกล้อง คลิกสลับโหมดควบคุมเมาส์ด้านล้องได้ทันที
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ==================== POPUPS / KNOWLEDGE MODAL ==================== -->
+  <div id="knowledge-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4 hidden">
+    <div class="hud-panel max-w-2xl w-full p-6 rounded-2xl border border-cyan-500/40 shadow-2xl relative flex flex-col gap-4">
+      <button id="btn-close-knowledge" class="absolute top-4 right-4 p-1 rounded-full bg-slate-900 border border-slate-700 hover:bg-slate-800 text-slate-400 transition">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h2 class="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-fuchsia-500 flex items-center gap-2">
+        <i data-lucide="graduation-cap" class="text-cyan-400"></i>
+        คลังความรู้วิทยาศาสตร์ ม.2: ระยะทาง & การกระจัด
+      </h2>
+
+      <div class="space-y-4 text-sm leading-relaxed text-slate-300 h-[60vh] overflow-y-auto pr-2">
+        <div class="bg-cyan-950/30 p-4 rounded-xl border border-cyan-500/20">
+          <h3 class="text-cyan-300 font-bold mb-1 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+            1. ระยะทาง (Distance: <span id="kmodal-s"></span>)
+          </h3>
+          <p>ความยาวตามแนวเส้นทางจริงที่วัตถุเคลื่อนที่ได้ทั้งหมด เป็น <strong>ปริมาณสเกลาร์ (Scalar)</strong> มีเพียงขนาดเท่านั้น หน่วยสากลเป็น เมตร (m)</p>
+        </div>
+
+        <div class="bg-fuchsia-950/30 p-4 rounded-xl border border-fuchsia-500/20">
+          <h3 class="text-fuchsia-300 font-bold mb-1 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-fuchsia-400"></span>
+            2. การกระจัด (Displacement: <span id="kmodal-vec-s"></span>)
+          </h3>
+          <p>ระยะทางที่สั้นที่สุดจากจุดเริ่มต้นชี้ตรงไปยังจุดสิ้นสุดในแนวเส้นตรง เป็น <strong>ปริมาณเวกเตอร์ (Vector)</strong> ต้องการระบุทั้งขนาดและทิศทาง หน่วยสากลเป็น เมตร (m)</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+            <h4 class="text-cyan-400 font-bold text-xs uppercase mb-1">อัตราเร็ว (Speed: <span id="kmodal-v"></span>)</h4>
+            <div id="katex-kmodal-speed" class="text-center bg-slate-950 py-2 rounded text-base font-mono my-2 text-cyan-300"></div>
+            <p class="text-xs text-slate-400">คือ ระยะทางที่วัตถุเคลื่อนที่ได้ในหนึ่งหน่วยเวลา เป็นสเกลาร์</p>
+          </div>
+          <div class="bg-slate-900/60 p-4 rounded-xl border border-slate-700">
+            <h4 class="text-fuchsia-400 font-bold text-xs uppercase mb-1">ความเร็ว (Velocity: <span id="kmodal-vec-v"></span>)</h4>
+            <div id="katex-kmodal-velocity" class="text-center bg-slate-950 py-2 rounded text-base font-mono my-2 text-fuchsia-300"></div>
+            <p class="text-xs text-slate-400">คือ การกระจัดของวัตถุในหนึ่งหน่วยเวลา มีทิศเดียวกับการกระจัด เป็นเวกเตอร์</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="text-right">
+        <button id="btn-close-knowledge-ok" class="px-6 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold transition">
+          เข้าใจแล้ว!
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== POPUPS / INTERACTIVE TOUR OVERLAY ==================== -->
+  <!-- ระบบทัวร์ Onboarding ไฮไลท์และชี้ปุ่มด้วยกล่องสีเหลืองโปร่งแสงและกากบาทปิดได้ตามสั่ง -->
+  <div id="tour-overlay" class="fixed inset-0 z-40 bg-slate-950/75 pointer-events-none hidden transition-all duration-300">
+    <!-- กรอบไฮไลท์สีเหลืองเรืองแสงสำหรับครอบปุ่ม -->
+    <div id="tour-highlighter" class="absolute border-3 border-yellow-400 bg-yellow-500/10 rounded-xl transition-all duration-300 pointer-events-auto shadow-[0_0_30px_rgba(234,179,8,0.7)] animate-pulse"></div>
+    
+    <!-- กล่องข้อความแนะแนวพร้อมลูกศรชี้เป้า -->
+    <div id="tour-tooltip" class="absolute pointer-events-auto bg-slate-900 border-2 border-yellow-500/50 p-4 rounded-xl shadow-2xl max-w-sm transition-all duration-300 z-50 text-slate-100 font-sans">
+      <!-- ลูกศรชี้ไปทางเป้าหมาย (วาดแบบ CSS Triangle) -->
+      <div id="tour-arrow" class="absolute w-0 h-0 border-[10px] border-transparent"></div>
+      
+      <!-- ส่วนหัวของโมดอลคู่มือนำทาง -->
+      <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-2">
+        <span id="tour-step-badge" class="px-2 py-0.5 rounded bg-yellow-400/25 text-yellow-400 text-xs font-mono font-bold tracking-wider">คู่มือนำทาง</span>
+        <button id="btn-close-tour" class="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-100 transition">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+      
+      <!-- คำอธิบายแต่ละขั้นตอนฟิสิกส์ -->
+      <p id="tour-text" class="text-xs text-slate-300 leading-relaxed mb-3"></p>
+      
+      <!-- ปุ่มนำทางล่างสุด -->
+      <div class="flex justify-between items-center">
+        <button id="btn-tour-prev" class="px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">ย้อนกลับ</button>
+        <button id="btn-tour-next" class="px-4 py-1.5 rounded bg-yellow-500 hover:bg-yellow-400 text-slate-950 font-bold text-xs transition flex items-center gap-1 shadow-lg shadow-yellow-500/20">
+          <span id="btn-tour-next-text">ถัดไป</span>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== JAVASCRIPT GAME LOGIC ==================== -->
+  <script>
+    // --- ตั้งค่า Gemini API และฟังก์ชันดึงโมเดลภาษา (LLM) ---
+    const apiKey = ""; 
+
+    async function callGemini(prompt, systemInstruction = "") {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+      const payload = {
+        contents: [{ parts: [{ text: prompt }] }]
+      };
+      if (systemInstruction) {
+        payload.systemInstruction = { parts: [{ text: systemInstruction }] };
+      }
+      
+      let delay = 1000;
+      for (let i = 0; i < 5; i++) {
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (response.ok) {
+            const result = await response.json();
+            return result.candidates?.[0]?.content?.parts?.[0]?.text;
+          }
+        } catch (e) {}
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+      }
+      throw new Error("ระบบเชื่อมต่อวิเคราะห์ผลขัดข้องชั่วขณะ กรุณาลองใหม่อีกครั้งจ้า");
+    }
+
+    function renderMathInText(text) {
+      let html = text.replace(/\$\$(.*?)\$\$/g, (match, math) => {
+        try {
+          return '<div class="my-2 text-center text-cyan-300 font-mono">' + katex.renderToString(math, { displayMode: true, throwOnError: false }) + '</div>';
+        } catch(e) { return match; }
+      });
+      html = html.replace(/\$(.*?)\$/g, (match, math) => {
+        try {
+          return '<span class="text-cyan-400 font-mono px-1">' + katex.renderToString(math, { displayMode: false, throwOnError: false }) + '</span>';
+        } catch(e) { return match; }
+      });
+      return html;
+    }
+
+    // --- ระบบสังเคราะห์เสียง (Audio Synthesizer) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playBeep(type) {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      if (type === 'correct') {
+        osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+        osc.frequency.exponentialRampToValueAtTime(1046.50, audioCtx.currentTime + 0.15); 
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.2);
+      } else if (type === 'wrong') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+        osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.3);
+      } else if (type === 'pop') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(200, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.12);
+      } else if (type === 'hover') {
+        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+      }
+    }
+
+    // --- การดักจับพิกัดบราวเซอร์ & ตัวแปร Global ---
+    const videoElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('output_canvas');
+    const ctx = canvasElement.getContext('2d');
+    
+    // ดึง DOM สำหรับปุ่มและเมนูแจ้งสถานะนำทาง
+    const inputModeText = document.getElementById('input-mode-text');
+    const inputModeIcon = document.getElementById('input-mode-icon');
+    const btnToggleInput = document.getElementById('btn-toggle-input');
+
+    const state = {
+      score: 0,
+      currentPhase: 'tutorial', 
+      pointer: { x: 0, y: 0, active: false, timer: 0, targetId: null },
+      handDetected: false,
+      cameraActive: false,
+      inputMode: 'hand', 
+      quizIndex: 0,
+      quizTimer: 30.0,
+      quizCorrectCount: 0,
+      physicsData: {
+        distance: 0.0,
+        displacement: 0.0,
+        timeDistance: 0.0,
+        timeDisplacement: 0.0,
+        speed: 0.0,
+        velocity: 0.0,
+        direction: "-"
+      }
+    };
+
+    const mission1 = {
+      startPoint: { x: 0, y: 0, r: 25 },
+      endPoint: { x: 0, y: 0, r: 25 },
+      circleCenter: { x: 0, y: 0, r: 0 },
+      pathTraveled: [],
+      tracingActive: false,
+      startTime: 0,
+      curvedPath: [],
+      caseProgress: 0, 
+      demoStep: 0,     
+      demoTimer: 0,    
+      case1Passed: false,
+      case2Passed: false,
+      case3Passed: false
+    };
+
+    const mission2 = {
+      targetType: 'เวกเตอร์', 
+      timer: 30.0, 
+      crystals: [],
+      lastSpawn: 0,
+      requiredMatches: 5,
+      currentMatches: 0,
+      scoreInPhase: 0,
+      itemsPool: [
+        { text: 'ความเร็ว', type: 'เวกเตอร์' },
+        { text: 'การกระจัด', type: 'เวกเตอร์' },
+        { text: 'แรงผลัก (N)', type: 'เวกเตอร์' },
+        { text: 'ความเร่ง', type: 'เวกเตอร์' },
+        { text: 'โมเมนตัม', type: 'เวกเตอร์' },
+        { text: 'อัตราเร็ว', type: 'สเกลาร์' },
+        { text: 'ระยะทาง', type: 'สเกลาร์' },
+        { text: 'มวล (kg)', type: 'สเกลาร์' },
+        { text: 'เวลา (s)', type: 'สเกลาร์' },
+        { text: 'อุณหภูมิ', type: 'สเกลาร์' },
+        { text: 'พลังงาน (J)', type: 'สเกลาร์' }
+      ]
+    };
+
+    // ✨ ปรับปรุงคลังคำถามแบบทดสอบให้ใช้ไวยากรณ์เวกเตอร์อัจฉริยะแบบแยกสัญญลักษณ์ [s] และ [v]
+    const questions = [
+      {
+        q: '1. หากนักเรียนวิ่งรอบสนามฟุตบอลรูปวงกลมครบรอบ 1 รอบพอดี ปริมาณใดมีค่าเป็นศูนย์?',
+        options: [
+          { text: 'A: ระยะทางทั้งหมด', correct: false },
+          { text: 'B: การกระจัด', correct: true },
+          { text: 'C: อัตราเร็วเฉลี่ย', correct: false }
+        ]
+      },
+      {
+        q: '2. "รถจักรยานยนต์ขับไปทางทิศตะวันออกด้วยความเร็ว 40 km/h" เป็นการระบุปริมาณชนิดใด?',
+        options: [
+          { text: 'A: ปริมาณเวกเตอร์ เพราะมีทั้งขนาดและทิศทาง', correct: true },
+          { text: 'B: ปริมาณสเกลาร์ เพราะคิดจากการเดินทางทั้งหมด', correct: false },
+          { text: 'C: ปริมาณเวกเตอร์ เพราะไม่มีความเกี่ยวข้องกับเวลา', correct: false }
+        ]
+      },
+      {
+        q: '3. อัตราส่วนระหว่าง "การกระจัด" ที่วัตถุเคลื่อนที่ได้กับ "เวลา" ที่ใช้ในการเคลื่อนที่ คือปริมาณใด?',
+        options: [
+          { text: 'A: อัตราเร็วเฉลี่ย (v)', correct: false },
+          { text: 'B: ความเร่งเฉลี่ย (a)', correct: false },
+          { text: 'C: ความเร็วเฉลี่ย ([v])', correct: true }
+        ]
+      },
+      {
+        q: '4. ข้อใดอธิบายความสัมพันธ์ระหว่างขนาดของระยะทาง (s) และขนาดของการกระจัด ([s]) ได้ถูกต้องที่สุด?',
+        options: [
+          { text: 'A: ระยะทางจะมากกว่าหรือเท่ากับการกระจัดเสมอ (s ≥ [s])', correct: true },
+          { text: 'B: การกระจัดต้องมากกว่าระยะทางเสมอ (s < [s])', correct: false },
+          { text: 'C: ระยะทางต้องเท่ากับการกระจัดเท่านั้น', correct: false }
+        ]
+      },
+      {
+        q: '5. เดินจากโรงเรียนไปร้านค้า 4 เมตร แล้วเดินต่อไปบ้าน 3 เมตรในทิศตั้งฉากกัน ระยะทางและการกระจัดเป็นเท่าใด?',
+        options: [
+          { text: 'A: ระยะทาง 7 ม., การกระจัด 5 ม.', correct: true },
+          { text: 'B: ระยะทาง 5 ม., การกระจัด 7 ม.', correct: false },
+          { text: 'C: ระยะทาง 7 ม., การกระจัด 1 ม.', correct: false }
+        ]
+      },
+      {
+        q: '6. สัญลักษณ์ทางฟิสส์รูปตัวอักษรที่มีหัวลูกศรชี้ไปทางขวาด้านบน (เช่น [s], [v]) ใช้แทนสิ่งใด?',
+        options: [
+          { text: 'A: แสดงทิศทางไปข้างหน้าเท่านั้น', correct: false },
+          { text: 'B: ปริมาณเวกเตอร์ ที่ต้องการบอกขนาดและทิศทาง', correct: true },
+          { text: 'C: ตัวคูณหน่วยเวลาในระบบ SI', correct: false }
+        ]
+      },
+      {
+        q: '7. เหตุใด อัตราเร็ว จึงจัดเป็นปริมาณสเกลาร์?',
+        options: [
+          { text: 'A: เพราะคำนวณจากระยะทางตามแนวเส้นทางเคลื่อนที่จริง', correct: true },
+          { text: 'B: เพราะคำนวากจากการลากเส้นตรงจากจุดเริ่มชี้ไปจุดปลาย', correct: false },
+          { text: 'C: เพราะมีความเร่งคงที่เสมอในทุกระนาบ', correct: false }
+        ]
+      },
+      {
+        q: '8. ถ้าวัตถุอยู่นิ่งไม่มีการเคลื่อนที่เลย ค่าของระยะทางและการกระจัดจะเป็นอย่างไง?',
+        options: [
+          { text: 'A: ระยะทางมากกว่า 0 ม. และการกระจัดเท่ากับ 0 ม.', correct: false },
+          { text: 'B: มีค่าเป็นศูนย์เท่ากันทั้งสองปริมาณ', correct: true },
+          { text: 'C: ค่าการกระจัดเป็นลบตามพิกัดอวกาศ', correct: false }
+        ]
+      },
+      {
+        q: '9. หากคุณปั่นจักรยานเป็นเส้นทางโค้งรูปครึ่งวงกลมรัศมี 7 เมตร ระยะทางสั้นที่สุดจากจุดเริ่มต้นไปปลายทางคืออะไร?',
+        options: [
+          { text: 'A: การกระจัด ซึ่งมีขนาดเท่ากับเส้นผ่านศูนย์กลาง (14 เมตร)', correct: true },
+          { text: 'B: ระยะทาง ซึ่งมีขนาดเท่ากับเส้นรอบรูป (22 เมตร)', correct: false },
+          { text: 'C: อัตราเร็วสัมพัทธ์ในแนวราบ', correct: false }
+        ]
+      },
+      {
+        q: '10. ข้อใดต่อไปนี้จัดเป็นปริมาณสเกลาร์ทั้งหมด?',
+        options: [
+          { text: 'A: ความเร็ว, การกระจัด, แรงผลัก', correct: false },
+          { text: 'B: อัตราเร็ว, ระยะทาง, อุณหภูมิ', correct: true },
+          { text: 'C: น้ำหนัก, เวลา, ความเร่ง', correct: false }
+        ]
+      }
+    ];
+
+    const mission1Scenarios = [
+      {
+        title: "กรณีที่ 1: เดินทางตรง (โรงเรียน -> ร้านของชำ)",
+        desc: "ลากนิ้วเชื่อมตามทางตรงเพื่อหา s และ s\u20D7 สังเกตว่าในแนวเส้นตรง สองค่านี้จะเท่ากันพอดี!",
+        mapType: "straight",
+        startLabel: "โรงเรียน",
+        endLabel: "ร้านของชำ",
+        setup: (W, H) => {
+          mission1.startPoint = { x: W * 0.15, y: H * 0.55, r: 25 };
+          mission1.endPoint = { x: W * 0.85, y: H * 0.55, r: 25 };
+        }
+      },
+      {
+        title: "กรณีที่ 2: เดินอ้อมสิ่งกีดขวาง (บ้าน -> ร้านไอติม)",
+        desc: "ขั้นแรก: ลากตามสะพานโค้ง (ระยะทาง s) จากนั้นขั้นสอง: ลากเส้นตรงทะลุผ่าน (การกระจัด s\u20D7)",
+        mapType: "curved",
+        startLabel: "บ้าน",
+        endLabel: "ร้านไอติม",
+        setup: (W, H) => {
+          mission1.startPoint = { x: W * 0.15, y: H * 0.55, r: 25 };
+          mission1.endPoint = { x: W * 0.85, y: H * 0.55, r: 25 };
+          mission1.curvedPath = [
+            { x: W * 0.15, y: H * 0.55 },
+            { x: W * 0.28, y: H * 0.30 },
+            { x: W * 0.42, y: H * 0.22 },
+            { x: W * 0.50, y: H * 0.45 },
+            { x: W * 0.58, y: H * 0.68 },
+            { x: W * 0.72, y: H * 0.75 },
+            { x: W * 0.85, y: H * 0.55 }
+          ];
+        }
+      },
+      {
+        title: "กรณีที่ 3: เดินครบรอบ (บ้าน -> ตลาด -> สนามกีฬา -> บ้าน)",
+        desc: "ลากอ้อมรอบสระน้ำเป็นแนวโค้งวงกลมกลับมาหยุดที่เดิมพอดี สังเกตผลลัพธ์ของการกระจัด!",
+        mapType: "roundabout",
+        startLabel: "บ้าน (เริ่ม)",
+        endLabel: "บ้าน (จบ)",
+        setup: (W, H) => {
+          mission1.startPoint = { x: W * 0.50, y: H * 0.75, r: 25 };
+          mission1.endPoint = { x: W * 0.50, y: H * 0.75, r: 25 }; 
+          
+          const cx = W * 0.50;
+          const cy = H * 0.50;
+          const r = Math.min(W, H) * 0.25;
+          mission1.circleCenter = { x: cx, y: cy, r: r };
+        }
+      }
+    ];
+
+    let currentScenarioIndex = 0;
+
+    // --- จัดการขนาดหน้าจอแบบยืดหยุ่น ---
+    function resizeCanvas() {
+      const rect = canvasElement.parentNode.getBoundingClientRect();
+      canvasElement.width = rect.width;
+      canvasElement.height = rect.height;
+
+      const W = canvasElement.width;
+      const H = canvasElement.height;
+      
+      mission1.startPoint.x = W * 0.15;
+      mission1.startPoint.y = H * 0.55;
+      mission1.endPoint.x = W * 0.85;
+      mission1.endPoint.y = H * 0.55;
+      
+      mission1.startPoint.r = Math.min(W, H) * 0.06;
+      mission1.endPoint.r = Math.min(W, H) * 0.06;
+
+      mission1.curvedPath = [
+        { x: W * 0.15, y: H * 0.55 },
+        { x: W * 0.28, y: H * 0.32 },
+        { x: W * 0.42, y: H * 0.25 },
+        { x: W * 0.50, y: H * 0.45 },
+        { x: W * 0.58, y: H * 0.68 },
+        { x: W * 0.72, y: H * 0.75 },
+        { x: W * 0.85, y: H * 0.55 }
+      ];
+
+      const cx = W * 0.50;
+      const cy = H * 0.50;
+      const r = Math.min(W, H) * 0.25;
+      mission1.circleCenter = { x: cx, y: cy, r: r };
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- ข้อความแจ้งเตือน (Toast Helper) ---
+    // ✨ อนุมัติการใช้แอนิเมชันย่อขยายแบบเรซพอนซีฟและเรืองแสงผ่าน scale-95 -> scale-100 ทับบริเวณตำแหน่งใต้กล่องข้อความอย่างเสถียร
+    function showToast(msg) {
+      const toast = document.getElementById('ar-toast');
+      const toastMsg = document.getElementById('ar-toast-msg');
+      toastMsg.textContent = msg;
+      toast.classList.remove('opacity-0', 'scale-95');
+      toast.classList.add('opacity-100', 'scale-100');
+      
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'scale-100');
+        toast.classList.add('opacity-0', 'scale-95');
+      }, 3500);
+    }
+
+    // --- จัดการระบบอัปเดตคะแนนรวมเครื่องมือนำทาง ---
+    function updateScore(amount) {
+      state.score = Math.max(0, state.score + amount);
+      document.getElementById('hud-score').textContent = state.score;
+    }
+
+    // --- จัดการแสดงสูตรฟิสิกส์สด ---
+    function updateScienceFormulas() {
+      try {
+        const s = state.physicsData?.distance?.toFixed(2) || "-";
+        const t_s = state.physicsData?.timeDistance?.toFixed(2) || "-";
+        const speed = state.physicsData?.speed?.toFixed(2) || "-";
+
+        const disp = state.physicsData?.displacement?.toFixed(2) || "-";
+        const t_v = state.physicsData?.timeDisplacement?.toFixed(2) || "-";
+        const velocity = state.physicsData?.velocity?.toFixed(2) || "-";
+        const direction = state.physicsData?.direction || "-";
+
+        document.getElementById('calc-s').textContent = s;
+        document.getElementById('calc-t').textContent = t_s;
+        document.getElementById('calc-disp').textContent = disp;
+        document.getElementById('calc-t-v').textContent = t_v;
+        document.getElementById('calc-dir').textContent = direction;
+
+        const latexS = `v = \\frac{s}{t} = \\frac{${s}\\text{ m}}{${t_s}\\text{ s}} = ${speed}\\text{ m/s}`;
+        katex.render(latexS, document.getElementById('katex-speed'), { throwOnError: false });
+
+        const latexV = `\\vec{v} = \\frac{\\vec{s}}{t} = \\frac{${disp}\\text{ m}}{${t_v}\\text{ s}} = ${velocity}\\text{ m/s } [\\text{${direction}}]`;
+        katex.render(latexV, document.getElementById('katex-velocity'), { throwOnError: false });
+      } catch (err) {
+        console.error("KaTeX failed to render: ", err);
+      }
+    }
+
+    // --- สถาปนาการเชื่อมต่อ MediaPipe Hands Engine ---
+    const hands = new Hands({
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+    });
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    hands.onResults((results) => {
+      if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        state.handDetected = true;
+        state.pointer.active = true;
+        const indexFinger = results.multiHandLandmarks[0][8]; 
+        state.pointer.x = (1 - indexFinger.x) * canvasElement.width;
+        state.pointer.y = indexFinger.y * canvasElement.height;
+      } else {
+        state.handDetected = false;
+        if (state.inputMode === 'hand') {
+          state.pointer.active = false;
+        }
+      }
+    });
+
+    // --- ระบบประมวลผลกล้องเว็บแคม ---
+    let isProcessingHand = false; 
+    
+    async function processVideoFrame() {
+      if (state.inputMode === 'hand' && state.cameraActive && videoElement.readyState >= 2 && videoElement.videoWidth > 0) {
+        if (!isProcessingHand) {
+          isProcessingHand = true;
+          try {
+            await hands.send({ image: videoElement });
+          } catch (e) {
+            console.warn("MediaPipe frame processing failure:", e);
+          } finally {
+            isProcessingHand = false; 
+          }
+        }
+      }
+      requestAnimationFrame(processVideoFrame);
+    }
+
+    async function initCamera() {
+      const camStatusEl = document.getElementById('hud-camera-status');
+      const camIcon = document.getElementById('cam-icon');
+      
+      camStatusEl.textContent = "กำลังเชื่อมกล้อง...";
+      camStatusEl.className = "text-amber-400";
+
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        handleCameraError(new Error("เบราว์เซอร์ไม่รองรับกล้องในโดเมนที่ไม่ปลอดภัย"));
+        return;
+      }
+
+      const cameraConstraints = [
+        { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } } },
+        { video: { facingMode: "user" } },
+        { video: true }
+      ];
+
+      let stream = null;
+      for (const constraints of cameraConstraints) {
+        try {
+          stream = await navigator.mediaDevices.getUserMedia(constraints);
+          if (stream) break; 
+        } catch (e) {
+          console.warn("พารามิเตอร์ขัดข้อง กำลังเปลี่ยนการตรวจจับ...", e);
+        }
+      }
+
+      if (stream) {
+        try {
+          videoElement.srcObject = stream;
+          videoElement.muted = true;
+          videoElement.playsInline = true;
+          videoElement.setAttribute('playsinline', '');
+          videoElement.setAttribute('muted', '');
+          
+          const startPlay = () => {
+            videoElement.play().then(() => {
+              state.cameraActive = true;
+              camStatusEl.textContent = "ระบบ AR พร้อม";
+              camStatusEl.className = "text-emerald-400";
+              camIcon.className = "w-4 h-4 text-emerald-400";
+              showToast("เชื่อมต่อกล้องเว็บแคมสำเร็จ! ชูปลายนิ้วชี้เพื่อลากเส้น หรือใช้โหมดเมาส์จำลอง");
+              document.getElementById('camera-prompt-overlay').classList.add('hidden');
+            }).catch(playErr => {
+              console.error("Video play rejected:", playErr);
+              handleCameraError(playErr);
+            });
+          };
+
+          if (videoElement.readyState >= 2) {
+            startPlay();
+          } else {
+            videoElement.onloadedmetadata = startPlay;
+          }
+        } catch (playError) {
+          handleCameraError(playError);
+        }
+      } else {
+        handleCameraError(new Error("สิทธิ์กล้องถูกปฏิเสธโดยนโยบายรักษาความปลอดภัยของระบบ"));
+      }
+    }
+
+    function handleCameraError(err) {
+      console.warn("Camera failed to load:", err);
+      const camStatusEl = document.getElementById('hud-camera-status');
+      const camIcon = document.getElementById('cam-icon');
+      
+      state.cameraActive = false;
+      state.inputMode = 'mouse';
+      camStatusEl.textContent = "ใช้โหมดจำลอง (เมาส์/สัมผัส)";
+      camStatusEl.className = "text-amber-400";
+      camIcon.className = "w-4 h-4 text-amber-400 font-mono";
+      
+      inputModeText.textContent = "โหมดจำลองเมาส์/สัมผัส";
+      inputModeIcon.setAttribute('data-lucide', 'mouse');
+      lucide.createIcons();
+      showToast("สลับเข้าโหมดจำลอง! เล่นด้วยเมาส์หรือระบบทัชสกรีนได้ทันที 100%");
+      document.getElementById('camera-prompt-overlay').classList.add('hidden');
+    }
+
+    // --- เชื่อมโยงเหตุการณ์ Click เพื่อรองรับสิทธิ์นโยบายความปลอดภัยกล้อง ---
+    document.getElementById('btn-start-ar').addEventListener('click', () => {
+      initCamera();
+    });
+
+    document.getElementById('btn-skip-ar').addEventListener('click', () => {
+      state.cameraActive = false;
+      state.inputMode = 'mouse';
+      inputModeText.textContent = "จำลองผ่านเมาส์/สัมผัส";
+      inputModeIcon.setAttribute('data-lucide', 'mouse');
+      lucide.createIcons();
+      document.getElementById('camera-prompt-overlay').classList.add('hidden');
+      showToast("เข้าสู่ยานจำลองระบบอวกาศฟิสิกส์!");
+    });
+
+    // --- สลับโหมดนำทางแบบไฮบริด (เมาส์ & สัมผัสหน้าจอมือถือ) ---
+    // เพื่อกันปัญหาเส้นลากเอง สภาพ Pointer จะพร้อม Active เฉพาะเมื่อมีการกดคลิก (MouseDown) หรือการสัมผัส (TouchStart) ค้างไว้จริง
+    let isMouseDown = false;
+
+    function updatePointerCoords(clientX, clientY) {
+      const rect = canvasElement.getBoundingClientRect();
+      const cssX = clientX - rect.left;
+      const cssY = clientY - rect.top;
+      // Map พิกัด CSS ไปยังอัตราส่วนพิกัดจริงของ canvas ป้องกันสัดส่วนเพี้ยนขณะย่อขยายจอ
+      state.pointer.x = (cssX / rect.width) * canvasElement.width;
+      state.pointer.y = (cssY / rect.height) * canvasElement.height;
+    }
+
+    canvasElement.addEventListener('mousedown', (e) => {
+      if (state.inputMode === 'mouse') {
+        isMouseDown = true;
+        updatePointerCoords(e.clientX, e.clientY);
+        state.pointer.active = true;
+      }
+    });
+
+    canvasElement.addEventListener('mousemove', (e) => {
+      if (state.inputMode === 'mouse') {
+        updatePointerCoords(e.clientX, e.clientY);
+        state.pointer.active = isMouseDown;
+      }
+    });
+
+    canvasElement.addEventListener('mouseup', () => {
+      if (state.inputMode === 'mouse') {
+        isMouseDown = false;
+        state.pointer.active = false;
+      }
+    });
+
+    canvasElement.addEventListener('mouseleave', () => {
+      if (state.inputMode === 'mouse') {
+        isMouseDown = false;
+        state.pointer.active = false;
+      }
+    });
+
+    // ดักจับระเบียบทัชสกรีนบนโทรศัพท์มือถือแบบเสถียร
+    canvasElement.addEventListener('touchstart', (e) => {
+      if (state.inputMode === 'mouse' && e.touches.length > 0) {
+        updatePointerCoords(e.touches[0].clientX, e.touches[0].clientY);
+        state.pointer.active = true;
+      }
+    }, { passive: true });
+
+    canvasElement.addEventListener('touchmove', (e) => {
+      if (state.inputMode === 'mouse' && e.touches.length > 0) {
+        updatePointerCoords(e.touches[0].clientX, e.touches[0].clientY);
+        state.pointer.active = true;
+        e.preventDefault(); // ป้องกันหน้าเว็บเลื่อนขึ้นลงขณะกำลังลากสมการ
+      }
+    }, { passive: false });
+
+    canvasElement.addEventListener('touchend', () => {
+      if (state.inputMode === 'mouse') {
+        state.pointer.active = false;
+      }
+    });
+
+    // --- ตรรกะจัดการแท็บควบคุมซ้ายมือ (Dual-Tab Logic) ---
+    const tabBtnSandbox = document.getElementById('tab-btn-sandbox');
+    const tabBtnAI = document.getElementById('tab-btn-ai');
+    const tabContentSandbox = document.getElementById('tab-content-sandbox');
+    const tabContentAI = document.getElementById('tab-content-ai');
+    const aiNotif = document.getElementById('ai-notif');
+
+    tabBtnSandbox.addEventListener('click', () => setActiveTab('sandbox'));
+    tabBtnAI.addEventListener('click', () => setActiveTab('ai'));
+
+    function setActiveTab(tab) {
+      if (tab === 'sandbox') {
+        tabBtnSandbox.className = "flex-1 py-3 text-center border-b-2 border-cyan-400 text-cyan-300 font-bold bg-cyan-950/20 transition-all flex items-center justify-center gap-1.5";
+        tabBtnAI.className = "flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5 relative";
+        tabContentSandbox.classList.remove('hidden');
+        tabContentAI.classList.add('hidden');
+      } else {
+        tabBtnAI.className = "flex-1 py-3 text-center border-b-2 border-yellow-400 text-yellow-300 font-bold bg-yellow-950/20 transition-all flex items-center justify-center gap-1.5 relative";
+        tabBtnSandbox.className = "flex-1 py-3 text-center border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition-all flex items-center justify-center gap-1.5";
+        tabContentAI.classList.remove('hidden');
+        tabContentSandbox.classList.add('hidden');
+        aiNotif.classList.add('hidden'); 
+      }
+    }
+
+    // --- ตรรกะการสื่อสารกับ AI ผ่านทาง Gemini API ---
+    const aiChatLog = document.getElementById('ai-chat-log');
+    const aiChatInput = document.getElementById('ai-chat-input');
+    const btnAISend = document.getElementById('btn-ai-send');
+    const btnAIAnalyze = document.getElementById('btn-ai-analyze');
+
+    function appendChatMessage(sender, rawText, isUser = false) {
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `p-2 rounded text-xs ${isUser ? 'bg-cyan-950/30 border border-cyan-500/20 self-end text-right' : 'bg-fuchsia-950/20 border border-fuchsia-500/20 text-slate-300'}`;
+      
+      const processedText = isUser ? rawText : renderMathInText(rawText);
+      msgDiv.innerHTML = `<strong>${sender}:</strong> ${processedText}`;
+      aiChatLog.appendChild(msgDiv);
+      aiChatLog.scrollTop = aiChatLog.scrollHeight;
+    }
+
+    async function sendUserQuestion() {
+      const userText = aiChatInput.value.trim();
+      if (!userText) return;
+
+      appendChatMessage("👤 คุณ", userText, true);
+      aiChatInput.value = "";
+
+      const loaderDiv = document.createElement('div');
+      loaderDiv.className = "p-2 rounded bg-slate-900 border border-dashed border-slate-700 text-slate-500 text-center animate-pulse";
+      loaderDiv.id = "ai-loader";
+      loaderDiv.textContent = "⚙️ ครูพี่ AI กำลังคำนวณและวิเคราะห์คำตอบ...";
+      aiChatLog.appendChild(loaderDiv);
+      aiChatLog.scrollTop = aiChatLog.scrollHeight;
+
+      try {
+        const sysInstruction = "คุณคือ 'ครูพี่ AI' ติวเตอร์วิชาฟิสิกส์ระดับมัธยมศึกษาปีที่ 2 ที่เป็นมิตร ใจดี และเข้าใจจิตวิทยาเด็กวัยรุ่นไทย หน้าที่หลักของคุณคืออธิบายและสอนเรื่องระยะทาง ($s$) การกระจัด ($\\vec{s}$) อัตราเร็ว ($v$) และความเร็ว ($\\vec{v}$) โดยเน้นวิเคราะห์หาข้อผิดพลาด ความเข้าใจที่คลาดเคลื่อนทางฟิสิกส์ของผู้เรียน แนะนำหัวข้อเรื่องที่ผู้เรียนต้องทบทวนหรืออ่านเพิ่มเติมเพื่อแก้ปัญหานั้น และเปิดใจกว้างอย่างอบอุ่นให้ผู้เรียนสามารถพิมพ์สอบถามประเด็นที่ตนสงสัยหรือมีข้อติดขัดได้อย่างเสรี ตลอดจนใช้สัญลักษณ์ LaTeX ฟิสิกส์ ($s$, $\\vec{s}$, $v$, $\\vec{v}$) ให้เรียบร้อยสวยงามน่าสนใจ";
+        const aiResponse = await callGemini(userText, sysInstruction);
+        
+        const loader = document.getElementById('ai-loader');
+        if (loader) loader.remove();
+
+        appendChatMessage("🤖 ครูพี่ AI", aiResponse);
+        playBeep('correct');
+      } catch (err) {
+        const loader = document.getElementById('ai-loader');
+        if (loader) loader.remove();
+        appendChatMessage("🤖 ครูพี่ AI", "ขออภัยจ้า พี่ไม่สามารถเชื่อมต่อสัญญาณดาวเทียมเพื่อคิดเลขได้ในขณะนี้ ลองใหม่อีกครั้งนะ!");
+        playBeep('wrong');
+      }
+    }
+
+    btnAISend.addEventListener('click', sendUserQuestion);
+    aiChatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendUserQuestion();
+    });
+
+    btnAIAnalyze.addEventListener('click', async () => {
+      setActiveTab('ai');
+      
+      const s = state.physicsData?.distance?.toFixed(2) || "0.00";
+      const t_s = state.physicsData?.timeDistance?.toFixed(2) || "0.00";
+      const speed = state.physicsData?.speed?.toFixed(2) || "0.00";
+
+      const disp = state.physicsData?.displacement?.toFixed(2) || "0.00";
+      const t_v = state.physicsData?.timeDisplacement?.toFixed(2) || "0.00";
+      const velocity = state.physicsData?.velocity?.toFixed(2) || "0.00";
+      const direction = state.physicsData?.direction || "ทิศทางสัมพัทธ์";
+
+      appendChatMessage("👤 คุณ", "✨ ช่วยวิเคราะห์ผลการทำกิจกรรมของฉันทีจ้า!", true);
+
+      const loaderDiv = document.createElement('div');
+      loaderDiv.className = "p-2 rounded bg-slate-900 border border-dashed border-slate-700 text-slate-500 text-center animate-pulse";
+      loaderDiv.id = "ai-loader";
+      loaderDiv.textContent = "⚙️ ครูพี่ AI กำลังรวบรวมพารามิเตอร์เพื่อเขียนรายงานวิเคราะห์...";
+      aiChatLog.appendChild(loaderDiv);
+      aiChatLog.scrollTop = aiChatLog.scrollHeight;
+
+      // ✨ ปรับแต่ง AI Prompt ให้เน้นวิเคราะห์ 'ข้อผิดพลาดทางฟิสิกส์ที่ผู้เรียนมักมองข้าม' และแนะนำ 'เรื่องที่ต้องไปอ่านเพิ่ม' อย่างชัดเจน
+      const prompt = `ผลสถิติจำลองการทดลองฟิสิกส์จริงของผู้เรียน: 
+      - ระยะทางจริงที่เคลื่อนที่ $s$ = ${s} เมตร ในเวลา $t$ = ${t_s} วินาที ส่งผลให้อัตราเร็วสเกลาร์ $v = s/t$ = ${speed} m/s
+      - การกระจัดที่ลากสั้นสุด $\\vec{s}$ = ${disp} เมตร ในเวลา $t$ = ${t_v} วินาที ส่งผลให้ความเร็วเวกเตอร์ $\\vec{v} = \\vec{s}/t$ = ${velocity} m/s มุ่งหน้าไปทาง [${direction}]
+      
+      กรุณาทำหน้าที่เป็น 'ครูพี่ AI' ที่แสนใจดีและเชี่ยวชาญฟิสิกส์ ม.2 เขียนรายงานประเมินผลโดยละเอียด โดยเน้นประเด็นต่อไปนี้:
+      1. วิเคราะห์วิจัย "ข้อผิดพลาดหรือจุดบกพร่องที่ผู้เรียนอาจจะเกิดความสับสนหรือทำผิด" จากสถิติข้างต้น (เช่น การลากเส้นคดเคี้ยวไปมาทำให้อัตราเร็วช้าลง, ความเข้าใจคลาดเคลื่อนว่าระยะทางคดเคี้ยวสั้นกว่าการกระจัดแนวตรง, หรือความสับสนเรื่องการกำหนดเวกเตอร์ทิศทาง)
+      2. เสนอแนะเชิงรุกเกี่ยวกับ "หัวข้อบทเรียนหรือจุดประเด็นที่ผู้เรียนควรต้องกลับไปอ่านทำความเข้าใจและศึกษาทบทวนเพิ่มเติมอย่างเร่งด่วน" เพื่อให้แนวคิดฟิสิกส์แม่นยำขึ้น
+      3. ปิดท้ายด้วยข้อความเชิญชวนอย่างอบอุ่นและสร้างแรงบันดาลใจ ย้ำเตือนว่าผู้เรียนสามารถพิมพ์ถามคำถามที่สงสัยหรือพิมพ์คุยเรื่องที่ไม่เข้าใจตรงจุดไหนมาคุยกับพี่ AI เพิ่มเติมได้โดยตรงทันทีเลย`;
+
+      try {
+        const sysInstruction = "คุณคือ 'ครูพี่ AI' ติวเตอร์ฟิสิกส์ชั้น ม.2 จงอธิบายสถิติด้วยความอบอุ่นและใช้สัญลักษณ์ LaTeX ฟิสิกส์ ($s$, $\\vec{s}$, $v$, $\\vec{v}$) ให้เรียบร้อยสวยงามน่าสนใจ เน้นชี้จุดบกพร่อง แนะนำหัวข้อทบทวน และเปิดโอกาสให้ซักถาม";
+        const aiResponse = await callGemini(prompt, sysInstruction);
+
+        const loader = document.getElementById('ai-loader');
+        if (loader) loader.remove();
+
+        appendChatMessage("🤖 ครูพี่ AI", aiResponse);
+        playBeep('correct');
+      } catch (err) {
+        const loader = document.getElementById('ai-loader');
+        if (loader) loader.remove();
+        appendChatMessage("🤖 ครูพี่ AI", "ระบบวิเคราะห์อัตโนมัติถูกสัญญาณวิทยุกวนใจชั่วคราว ลองใหม่อีกครั้งนะจ้า!");
+        playBeep('wrong');
+      }
+    });
+
+    // --- โครงสร้างกระบวนการวาดลูปเกมหลัก ---
+    const tutBubbles = [
+      { x: 180, y: 160, r: 40, active: true, name: "แท่นชาร์จ A" },
+      { x: 460, y: 320, r: 40, active: true, name: "แท่นชาร์จ B" }
+    ];
+
+    let pulseScale = 1;
+    let pulseDirection = 1;
+    let lastFrameTime = Date.now();
+
+    // ฟังก์ชันวาดแผนอวกาศโฮโลแกรม 3D 
+    function drawSimulationFallback(now) {
+      const W = canvasElement.width;
+      const H = canvasElement.height;
+      
+      const grad = ctx.createLinearGradient(0, 0, 0, H);
+      grad.addColorStop(0, "#02020e");
+      grad.addColorStop(0.5, "#060814");
+      grad.addColorStop(1, "#0a122c");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+      
+      ctx.fillStyle = "rgba(0, 240, 255, 0.4)";
+      for (let i = 0; i < 30; i++) {
+        const speedMultiplier = state.pointer.active ? 1.5 : 0.5;
+        const starX = ((Math.sin(now * 0.0005 + i * 50) + 1) / 2) * W;
+        const starY = ((now * 0.04 * speedMultiplier + i * 20) % H);
+        ctx.beginPath();
+        ctx.arc(starX, starY, (i % 3 === 0) ? 2 : 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.15)";
+      ctx.lineWidth = 1;
+      const horizonY = H * 0.45;
+      
+      for (let x = -W * 0.5; x <= W * 1.5; x += W * 0.1) {
+        ctx.beginPath();
+        ctx.moveTo(W / 2, horizonY);
+        ctx.lineTo(x, H);
+        ctx.stroke();
+      }
+      
+      const lineSpeed = (now * 0.05) % 40;
+      for (let y = horizonY; y < H; y += 30) {
+        const animatedY = y + lineSpeed;
+        if (animatedY < H && animatedY > horizonY) {
+          const depthAlpha = (animatedY - horizonY) / (H - horizonY);
+          ctx.strokeStyle = `rgba(6, 182, 212, ${depthAlpha * 0.25})`;
+          ctx.beginPath();
+          ctx.moveTo(0, animatedY);
+          ctx.lineTo(W, animatedY);
+          ctx.stroke();
+        }
+      }
+
+      ctx.strokeStyle = "rgba(236, 72, 153, 0.3)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, horizonY);
+      ctx.lineTo(W, horizonY);
+      ctx.stroke();
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+      ctx.fillRect(W - 200, 20, 180, 42);
+      ctx.strokeStyle = "rgba(251, 191, 36, 0.4)";
+      ctx.strokeRect(W - 200, 20, 180, 42);
+      ctx.fillStyle = "#fbbf24";
+      ctx.font = "9px 'Chakra Petch'";
+      ctx.textAlign = "center";
+      ctx.fillText("🛰️ เครื่องจำลองอวกาศ", W - 110, 36);
+      ctx.fillStyle = "#cbd5e1";
+      ctx.font = "8px monospace";
+      ctx.fillText("SYSTEM: ACTIVE fallback SIM", W - 110, 49);
+    }
+
+    // ฟังก์ชันช่วยเหลือในการเติมจุดพิกัดแลนด์มาร์กแผนที่
+    function drawPointAAndB() {
+      const scenario = mission1Scenarios[currentScenarioIndex];
+      
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(mission1.startPoint.x, mission1.startPoint.y, mission1.startPoint.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 11px 'Chakra Petch'";
+      ctx.textAlign = "center";
+      ctx.fillText(scenario.startLabel, mission1.startPoint.x, mission1.startPoint.y + 4);
+
+      ctx.fillStyle = "#10b981";
+      ctx.beginPath();
+      ctx.arc(mission1.endPoint.x, mission1.endPoint.y, mission1.endPoint.r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(scenario.endLabel, mission1.endPoint.x, mission1.endPoint.y + 4);
+    }
+
+    // --- ฟังก์ชันวาดสัญลักษณ์เวกเตอร์ทับตัวแปรบน Canvas ---
+    // ปรับสเกลและการเยื้องของหัวลูกศรตามขนาดอักษรจริงอย่างสมบูรณ์
+    function drawVectorSymbol(ctx, char, x, y, size = 13) {
+      ctx.fillText(char, x, y);
+      ctx.save();
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = size >= 15 ? 1.5 : 1.1;
+      
+      const charWidth = ctx.measureText(char).width;
+      const arrowLength = size * 0.62; 
+      
+      const startX = x + (charWidth - arrowLength) / 2;
+      const arrowY = y - size * 0.96; 
+      
+      ctx.beginPath();
+      ctx.moveTo(startX, arrowY);
+      ctx.lineTo(startX + arrowLength, arrowY);
+      ctx.lineTo(startX + arrowLength - size * 0.2, arrowY - size * 0.14);
+      ctx.moveTo(startX + arrowLength, arrowY);
+      ctx.lineTo(startX + arrowLength - size * 0.2, arrowY + size * 0.14);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // ✨ พัฒนาระบบประมวลผลข้อความเวกเตอร์ Dynamic (Vector Text Engine)
+    // สำหรับแยกสัญญลักษณ์ [s], [v], [F], [a] บนกระดาน AR Canvas เพื่อวาดสัญลักษณ์เวกเตอร์ได้อย่างมั่นคง
+    function parseVectorText(text) {
+      const segments = [];
+      const regex = /\[([a-zA-Z])\]/g;
+      let lastIndex = 0;
+      let match;
+      while ((match = regex.exec(text)) !== null) {
+        const index = match.index;
+        if (index > lastIndex) {
+          segments.push({ isVector: false, text: text.substring(lastIndex, index) });
+        }
+        segments.push({ isVector: true, char: match[1] });
+        lastIndex = regex.lastIndex;
+      }
+      if (lastIndex < text.length) {
+        segments.push({ isVector: false, text: text.substring(lastIndex) });
+      }
+      return segments;
+    }
+
+    function measureVectorLine(ctx, text) {
+      const segments = parseVectorText(text);
+      let totalWidth = 0;
+      segments.forEach(seg => {
+        if (seg.isVector) {
+          totalWidth += ctx.measureText(seg.char).width;
+        } else {
+          totalWidth += ctx.measureText(seg.text).width;
+        }
+      });
+      return { totalWidth, segments };
+    }
+
+    // ฟังก์ชันวาดลายเส้นเวกเตอร์บน Canvas
+    function drawVectorText(ctx, text, x, y, size = 15, align = "center") {
+      ctx.save();
+      ctx.font = `bold ${size}px 'Chakra Petch'`;
+      const { totalWidth, segments } = measureVectorLine(ctx, text);
+      let currentX = x;
+      if (align === "center") {
+        currentX = x - totalWidth / 2;
+      } else if (align === "right") {
+        currentX = x - totalWidth;
+      }
+
+      ctx.textAlign = "left";
+      segments.forEach(seg => {
+        if (seg.isVector) {
+          drawVectorSymbol(ctx, seg.char, currentX, y, size);
+          currentX += ctx.measureText(seg.char).width;
+        } else {
+          ctx.fillText(seg.text, currentX, y);
+          currentX += ctx.measureText(seg.text).width;
+        }
+      });
+      ctx.restore();
+    }
+
+    // --- วาดจุดเคอร์เซอร์และ HUD ทับซ้อนแคนวาส ---
+    function drawPointerCursor() {
+      const px = state.pointer.x;
+      const py = state.pointer.y;
+
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(px, py, 18 + Math.sin(Date.now() * 0.01) * 3, 0, Math.PI*2);
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(236, 72, 153, 0.6)";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      const angleOffset = (Date.now() * 0.004) % (Math.PI * 2);
+      ctx.arc(px, py, 26, angleOffset, angleOffset + Math.PI * 0.5);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(px, py, 26, angleOffset + Math.PI, angleOffset + Math.PI * 1.5);
+      ctx.stroke();
+
+      ctx.fillStyle = "#22d3ee";
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI*2);
+      ctx.fill();
+
+      if (state.pointer.timer > 0 && state.currentPhase !== 'vector_catch') {
+        ctx.strokeStyle = "#fbbf24";
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(px, py, 12, -Math.PI / 2, (-Math.PI / 2) + (Math.PI * 2 * (state.pointer.timer / 30))); 
+        ctx.stroke();
+      }
+    }
+
+    // --- เรนเดอร์แยกตามฉากหลัก ---
+    function drawTutorialPhase(currentFrameTarget) {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.75)";
+      ctx.fillRect(canvasElement.width / 2 - 250, 25, 500, 75);
+      ctx.strokeStyle = "#06b6d4";
+      ctx.strokeRect(canvasElement.width / 2 - 250, 25, 500, 75);
+
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "ทดสอบเล็งเป้าหมาย: นำเคอร์เซอร์ไปชี้เป้าโฮโลแกรมด้านล่าง", canvasElement.width / 2, 50, 16, "center");
+      ctx.fillStyle = "#a5f3fc";
+      drawVectorText(ctx, "แช่ไว้ครู่หนึ่งจนวงแหวนสีเหลืองขึ้นเต็มเพื่อเปิดบล็อกพลังงาน", canvasElement.width / 2, 75, 13, "center");
+
+      tutBubbles.forEach((bubble, idx) => {
+        if (!bubble.active) return;
+
+        const distance = Math.hypot(state.pointer.x - bubble.x, state.pointer.y - bubble.y);
+        const isHovered = state.pointer.active && distance < bubble.r;
+
+        if (isHovered) {
+          currentFrameTarget = `tut_${idx}`;
+        }
+
+        ctx.strokeStyle = isHovered ? "#fbbf24" : "rgba(6, 182, 212, 0.5)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bubble.x, bubble.y, bubble.r * (isHovered ? pulseScale : 1), 0, Math.PI * 2);
+        ctx.stroke();
+
+        const grad = ctx.createRadialGradient(bubble.x, bubble.y, 5, bubble.x, bubble.y, bubble.r);
+        grad.addColorStop(0, "rgba(6, 182, 212, 0.1)");
+        grad.addColorStop(1, isHovered ? "rgba(251, 191, 36, 0.25)" : "rgba(6, 182, 212, 0.35)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(bubble.x, bubble.y, bubble.r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        drawVectorText(ctx, bubble.name, bubble.x, bubble.y + 4, 13, "center");
+      });
+
+      handleDwellClick(currentFrameTarget, (targetId) => {
+        const idx = parseInt(targetId.split('_')[1]);
+        tutBubbles[idx].active = false;
+        playBeep('pop');
+        updateScore(100);
+        showToast(`สำเร็จ! เปิดใช้งาน "${tutBubbles[idx].name}" (+100 XP)`);
+
+        if (!tutBubbles[0].active && !tutBubbles[1].active) {
+          setTimeout(() => {
+            switchPhase('path_intro');
+          }, 1000);
+        }
+      });
+    }
+
+    function drawPathIntroPhase() {
+      currentScenarioIndex = 1; 
+      const W = canvasElement.width;
+      const H = canvasElement.height;
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.fillRect(20, 20, canvasElement.width - 40, 75);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.5)";
+      ctx.strokeRect(20, 20, canvasElement.width - 40, 75);
+
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "👨‍🏫 เข้าใจก่อนลงมือ: เคลื่อนที่อ้อมโค้งจากเริ่ม A ไปแวะ B สู่จุดหมาย C (เมื่อเข้าใจแล้วกดปุ่มข้าม)", canvasElement.width / 2, 45, 15, "center");
+      ctx.fillStyle = "#38bdf8";
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง 'การกระจัด' ([s] -> s⃗)
+      drawVectorText(ctx, "เส้นโค้งทั้งหมดตามจริงคือ 'ระยะทาง' (s) | เส้นตรงสั้นที่สุดพุ่งจากจุดแรกไปท้ายคือ 'การกระจัด' ([s])", canvasElement.width / 2, 70, 12, "center");
+
+      const ptA = { x: W * 0.20, y: H * 0.65 };
+      const ptB = { x: W * 0.50, y: H * 0.35 };
+      const ptC = { x: W * 0.80, y: H * 0.65 };
+
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
+      ctx.lineWidth = 14;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(ptA.x, ptA.y);
+      ctx.quadraticCurveTo(ptB.x, ptB.y - 100, ptC.x, ptC.y);
+      ctx.stroke();
+
+      mission1.demoTimer += 1;
+      const progress = (mission1.demoTimer % 180) / 180; 
+
+      if (progress < 0.5) {
+        ctx.strokeStyle = "#06b6d4";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        
+        const subSteps = 30;
+        const currentLimit = Math.floor(progress * 2 * subSteps);
+        for (let i = 0; i <= currentLimit; i++) {
+          const t = i / subSteps;
+          const px = (1 - t) * (1 - t) * ptA.x + 2 * (1 - t) * t * ptB.x + t * t * ptC.x;
+          const py = (1 - t) * (1 - t) * ptA.y + 2 * (1 - t) * t * (ptB.y - 100) + t * t * ptC.y;
+          ctx.lineTo(px, py);
+        }
+        ctx.stroke();
+
+        const midT = 0.5;
+        const mx = (1 - midT) * (1 - midT) * ptA.x + 2 * (1 - midT) * midT * ptB.x + midT * midT * ptC.x;
+        const my = (1 - midT) * (1 - midT) * ptA.y + 2 * (1 - midT) * midT * (ptB.y - 100) + midT * midT * ptC.y;
+        
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(mx - 60, my - 35, 120, 24);
+        ctx.strokeStyle = "#06b6d4";
+        ctx.strokeRect(mx - 60, my - 35, 120, 24);
+        ctx.fillStyle = "#22d3ee";
+        drawVectorText(ctx, "ระยะทาง s (โค้งอ้อม)", mx, my - 19, 11, "center");
+      } else {
+        const straightProgress = (progress - 0.5) * 2;
+        const curX = ptA.x + (ptC.x - ptA.x) * straightProgress;
+        const curY = ptA.y + (ptC.y - ptA.y) * straightProgress;
+
+        ctx.strokeStyle = "#ec4899";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.moveTo(ptA.x, ptA.y);
+        ctx.lineTo(curX, curY);
+        ctx.stroke();
+
+        if (straightProgress > 0.1) {
+          ctx.fillStyle = "#ec4899";
+          ctx.beginPath();
+          ctx.arc(curX, curY, 6, 0, Math.PI*2);
+          ctx.fill();
+        }
+
+        const midX = ptA.x + (ptC.x - ptA.x) * 0.5;
+        const midY = ptA.y + (ptC.y - ptA.y) * 0.5 + 30;
+
+        ctx.fillStyle = "#020617";
+        ctx.fillRect(midX - 60, midY - 12, 120, 24);
+        ctx.strokeStyle = "#ec4899";
+        ctx.strokeRect(midX - 60, midY - 12, 120, 24);
+        ctx.fillStyle = "#f472b6";
+        
+        // ✨ วาดสัญลักษณ์เวกเตอร์ตรงการกระจัด
+        drawVectorText(ctx, "การกระจัด [s] (แนวตรง)", midX, midY + 4, 11, "center");
+      }
+
+      ctx.fillStyle = "#f97316";
+      ctx.beginPath();
+      ctx.arc(ptA.x, ptA.y, 25, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "จุดเริ่ม A", ptA.x, ptA.y + 4, 11, "center");
+
+      ctx.fillStyle = "#a855f7";
+      ctx.beginPath();
+      ctx.arc(ptB.x, ptB.y - 45, 20, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "จุด B", ptB.x, ptB.y - 41, 11, "center");
+
+      ctx.fillStyle = "#10b981";
+      ctx.beginPath();
+      ctx.arc(ptC.x, ptC.y, 25, 0, Math.PI*2);
+      ctx.fill();
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "จุดหมาย C", ptC.x, ptC.y + 4, 11, "center");
+    }
+
+    function drawPathCase1Phase() {
+      currentScenarioIndex = 0;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.fillRect(20, 20, canvasElement.width - 40, 50);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+      ctx.strokeRect(20, 20, canvasElement.width - 40, 50);
+
+      // ✨ วาดหัวข้อแบบกึ่งกลางหน้าจอแท้จริง 100% ด้วยสัญลักษณ์เวกเตอร์ Unicode s\u20D7 (s⃗) เสมอกลางกล่อง
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "กรณีที่ 1: โรงเรียน ➔ ร้านของชำ (แนวเส้นทางตรง s = [s])", canvasElement.width / 2, 40, 15, "center");
+
+      ctx.fillStyle = "#a5f3fc";
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง การกระจัด ([s])
+      drawVectorText(ctx, "ลากนิ้วเชื่อมแนวตรงจาก โรงเรียน ไปยัง ร้านค้า เพื่อพิสูจน์ว่าระยะทาง (s) และการกระจัด ([s]) เท่ากันในแนวตรง", canvasElement.width / 2, 60, 12, "center");
+
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.25)";
+      ctx.lineWidth = 14;
+      ctx.lineCap = "round";
+      ctx.beginPath();
+      ctx.moveTo(mission1.startPoint.x, mission1.startPoint.y);
+      ctx.lineTo(mission1.endPoint.x, mission1.endPoint.y);
+      ctx.stroke();
+
+      if (mission1.pathTraveled.length > 1) {
+        ctx.strokeStyle = "#22d3ee";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(mission1.pathTraveled[0].x, mission1.pathTraveled[0].y);
+        for (let i = 1; i < mission1.pathTraveled.length; i++) {
+          ctx.lineTo(mission1.pathTraveled[i].x, mission1.pathTraveled[i].y);
+        }
+        ctx.stroke();
+      }
+
+      drawPointAAndB();
+
+      // ✨ ดำเนินการลากเส้นต่อเมื่อ Pointer กำลัง Active เท่านั้น เพื่อกันปัญหาเส้นลากเองอัตโนมัติ
+      if (state.pointer.active) {
+        const dToStart = Math.hypot(state.pointer.x - mission1.startPoint.x, state.pointer.y - mission1.startPoint.y);
+        if (dToStart < mission1.startPoint.r && !mission1.tracingActive) {
+          mission1.tracingActive = true;
+          mission1.pathTraveled = [{ x: state.pointer.x, y: state.pointer.y }];
+          mission1.startTime = Date.now();
+          playBeep('pop');
+        }
+
+        if (mission1.tracingActive) {
+          const lastPoint = mission1.pathTraveled[mission1.pathTraveled.length - 1];
+          const dFromLast = Math.hypot(state.pointer.x - lastPoint.x, state.pointer.y - lastPoint.y);
+          if (dFromLast > 10) {
+            mission1.pathTraveled.push({ x: state.pointer.x, y: state.pointer.y });
+            playBeep('hover');
+          }
+
+          const dToEnd = Math.hypot(state.pointer.x - mission1.endPoint.x, state.pointer.y - mission1.endPoint.y);
+          if (dToEnd < mission1.endPoint.r && mission1.pathTraveled.length > 10) {
+            mission1.tracingActive = false;
+
+            // ✨ ตรวจสอบความถูกต้องของเส้นตรงที่วาด
+            let totalPathLength = 0;
+            for (let i = 1; i < mission1.pathTraveled.length; i++) {
+              totalPathLength += Math.hypot(mission1.pathTraveled[i].x - mission1.pathTraveled[i-1].x, mission1.pathTraveled[i].y - mission1.pathTraveled[i-1].y);
+            }
+            const straightDist = Math.hypot(mission1.endPoint.x - mission1.startPoint.x, mission1.endPoint.y - mission1.startPoint.y);
+            
+            // ยอมให้วาดเส้นคลาดเคลื่อนหรือเบี้ยวได้เล็กน้อย (20%) แต่ห้ามลากซิกแซกหรือลากอ้อม
+            if (totalPathLength > straightDist * 1.20) {
+              playBeep('wrong');
+              showToast("ระยะทางและการกระจัดในกรณีนี้ต้องเป็น 'เส้นตรง' เท่านั้น! ลากใหม่ให้ตรงกว่านี้นะ");
+              mission1.pathTraveled = [];
+              return;
+            }
+
+            mission1.case1Passed = true;
+
+            const timeTaken = (Date.now() - mission1.startTime) / 1000;
+            const simulatedDist = 12.0; 
+            state.physicsData.distance = simulatedDist;
+            state.physicsData.displacement = simulatedDist;
+            state.physicsData.timeDistance = timeTaken;
+            state.physicsData.timeDisplacement = timeTaken;
+            state.physicsData.speed = simulatedDist / timeTaken;
+            state.physicsData.velocity = simulatedDist / timeTaken;
+            state.physicsData.direction = "ทิศตะวันออก";
+
+            playBeep('correct');
+            updateScore(150);
+            showToast("ยอดเยี่ยม! เดินทางแนวตรงทำให้ระยะทางเท่ากับการกระจัดพอดี (+150 XP)");
+            setTimeout(() => {
+              switchPhase('path_case2');
+            }, 2000);
+          }
+        }
+      } else {
+        // หากผู้เรียนปล่อยนิ้ว / เลิกคลิกระหว่างวาด ให้ทำการล้างสถานะรีเซตใหม่ทันที ป้องกันพิกัดกระโดดเขียนเอง
+        if (mission1.tracingActive) {
+          mission1.tracingActive = false;
+          mission1.pathTraveled = [];
+          showToast("หลุดจากตำแหน่งควบคุม! กรุณาเริ่มลากใหม่จากจุดเริ่มต้น");
+        }
+      }
+    }
+
+    function drawPathCase2Phase() {
+      currentScenarioIndex = 1;
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.fillRect(20, 20, canvasElement.width - 40, 50);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+      ctx.strokeRect(20, 20, canvasElement.width - 40, 50);
+
+      ctx.fillStyle = "#ffffff";
+
+      if (mission1.caseProgress === 0) {
+        drawVectorText(ctx, "กรณีที่ 2: บ้าน ➔ ร้านไอติม (ขั้นตอนที่ 1/2: ลากตามทางโค้งเพื่อวัดระยะทาง s)", canvasElement.width / 2, 40, 15, "center");
+        ctx.fillStyle = "#22d3ee";
+        drawVectorText(ctx, "ลากนิ้วไปตามแนวสะพานอ้อมโค้งสีเทาด้านบนจากจุดเริ่มต้นสีส้ม ไปถึงร้านไอติมสีเขียว", canvasElement.width / 2, 60, 12, "center");
+      } else {
+        // ✨ จัดตำแหน่งกึ่งกลางสมบูรณ์แบบโดยตรงร่วมกับ Dynamic Vector Text [s]
+        drawVectorText(ctx, "กรณีที่ 2: บ้าน ➔ ร้านไอติม (ขั้นตอนที่ 2/2: ลากเส้นตรงลัดมิติเพื่อวัดการกระจัด [s])", canvasElement.width / 2, 40, 15, "center");
+        ctx.fillStyle = "#ec4899";
+        // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรงคำอธิบาย การกระจัด ([s])
+        drawVectorText(ctx, "ลากเส้นตรงทะลุผ่านสิ่งกีดขวางแนวราบโดยตรงเพื่อวัดการกระจัดสั้นที่สุด ([s])", canvasElement.width / 2, 60, 12, "center");
+      }
+
+      ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
+      ctx.lineWidth = 14;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.beginPath();
+      ctx.moveTo(mission1.curvedPath[0].x, mission1.curvedPath[0].y);
+      for (let i = 1; i < mission1.curvedPath.length; i++) {
+        ctx.lineTo(mission1.curvedPath[i].x, mission1.curvedPath[i].y);
+      }
+      ctx.stroke();
+
+      if (mission1.pathTraveled.length > 1) {
+        ctx.strokeStyle = mission1.caseProgress === 0 ? "#06b6d4" : "#ec4899";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.moveTo(mission1.pathTraveled[0].x, mission1.pathTraveled[0].y);
+        for (let i = 1; i < mission1.pathTraveled.length; i++) {
+          ctx.lineTo(mission1.pathTraveled[i].x, mission1.pathTraveled[i].y);
+        }
+        ctx.stroke();
+      }
+
+      drawPointAAndB();
+
+      // ✨ ดำเนินการวาดลากต่อเมื่อมีการลากด้วย Pointer จริง
+      if (state.pointer.active) {
+        const dToStart = Math.hypot(state.pointer.x - mission1.startPoint.x, state.pointer.y - mission1.startPoint.y);
+        
+        if (dToStart < mission1.startPoint.r && !mission1.tracingActive) {
+          mission1.tracingActive = true;
+          mission1.pathTraveled = [{ x: state.pointer.x, y: state.pointer.y }];
+          mission1.startTime = Date.now();
+          playBeep('pop');
+        }
+
+        if (mission1.tracingActive) {
+          const lastPoint = mission1.pathTraveled[mission1.pathTraveled.length - 1];
+          const dFromLast = Math.hypot(state.pointer.x - lastPoint.x, state.pointer.y - lastPoint.y);
+          if (dFromLast > 10) {
+            mission1.pathTraveled.push({ x: state.pointer.x, y: state.pointer.y });
+            playBeep('hover');
+          }
+
+          const dToEnd = Math.hypot(state.pointer.x - mission1.endPoint.x, state.pointer.y - mission1.endPoint.y);
+          if (dToEnd < mission1.endPoint.r && mission1.pathTraveled.length > 10) {
+            mission1.tracingActive = false;
+            
+            // ✨ ตรวจสอบลักษณะเส้นที่วาด (ตรง vs อ้อมโค้ง)
+            let totalPathLength = 0;
+            for (let i = 1; i < mission1.pathTraveled.length; i++) {
+              totalPathLength += Math.hypot(mission1.pathTraveled[i].x - mission1.pathTraveled[i-1].x, mission1.pathTraveled[i].y - mission1.pathTraveled[i-1].y);
+            }
+            const straightDist = Math.hypot(mission1.endPoint.x - mission1.startPoint.x, mission1.endPoint.y - mission1.startPoint.y);
+
+            if (mission1.caseProgress === 0) {
+              // ตรวจสอบว่าลากอ้อมจริงหรือไม่
+              if (totalPathLength < straightDist * 1.15) {
+                playBeep('wrong');
+                showToast("ระยะทาง (s) ต้องลากตาม 'เส้นทางอ้อมโค้ง' ตามแนวสะพานนะ! ลองลากใหม่จ้า");
+                mission1.pathTraveled = [];
+                return;
+              }
+
+              playBeep('correct');
+              state.physicsData.distance = 19.5; 
+              state.physicsData.timeDistance = (Date.now() - mission1.startTime) / 1000;
+              state.physicsData.speed = 19.5 / state.physicsData.timeDistance;
+
+              mission1.caseProgress = 1;
+              mission1.pathTraveled = [];
+              showToast("ระยะทางอ้อมโค้งบันทึกแล้ว! ต่อไปลากเส้นตรงเพื่อหาการกระจัด");
+            } else {
+              // ตรวจสอบว่าลากเส้นกระจัดตรงจริงหรือไม่
+              if (totalPathLength > straightDist * 1.20) {
+                playBeep('wrong');
+                showToast("การกระจัดต้องเป็น 'เส้นตรง' ที่สั้นที่สุด! ห้ามลากอ้อมนะจ๊ะ");
+                mission1.pathTraveled = [];
+                return;
+              }
+
+              playBeep('correct');
+              state.physicsData.displacement = 12.0; 
+              
+              // ✨ แก้ไข: ดึงเวลาจากการเดินทางจริง (ตอนลากเส้นโค้ง) มาใช้เพื่อเปรียบเทียบให้ถูกต้องตามหลักฟิสิกส์
+              state.physicsData.timeDisplacement = state.physicsData.timeDistance; 
+              state.physicsData.velocity = 12.0 / state.physicsData.timeDisplacement;
+              state.physicsData.direction = "ทิศตะวันออก";
+
+              mission1.case2Passed = true;
+              updateScore(150);
+              showToast("บันทึกการกระจัดสำเร็จ! (ใช้เวลาเดินทางจริงมาคำนวณความเร็ว) (+150 XP)");
+              setTimeout(() => {
+                switchPhase('path_case3');
+              }, 2500);
+            }
+          }
+        }
+      } else {
+        // ล้างความยาวเส้นค้างเพื่อป้องกันการเขียนเส้นลากแบบไร้ทิศทางเมื่อปล่อยควบคุม
+        if (mission1.tracingActive) {
+          mission1.tracingActive = false;
+          mission1.pathTraveled = [];
+          showToast("หลุดจากตำแหน่งควบคุม! กรุณาเริ่มลากใหม่จากจุดเริ่มต้น");
+        }
+      }
+    }
+
+    function drawPathCase3Phase(currentFrameTarget) {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.fillRect(40, 30, canvasElement.width - 80, canvasElement.height - 70);
+      ctx.strokeStyle = "#f43f5e";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(40, 30, canvasElement.width - 80, canvasElement.height - 70);
+
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "กรณีที่ 3: ความท้าทายสุดพิศวง", canvasElement.width / 2, 65, 15, "center");
+      
+      ctx.fillStyle = "#cbd5e1";
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง "ระยะทาง" และ "เวกเตอร์การกระจัด" ในคำถามท้าทาย ม.2
+      drawVectorText(ctx, "ในทางกลศาสตร์ทั่วไป เป็นไปได้หรือไม่ที่เราจะเดินทางจนได้ 'ระยะทางที่สั้นกว่าการกระจัด'?", canvasElement.width / 2, 95, 13, "center");
+
+      const W = canvasElement.width;
+      const H = canvasElement.height;
+      const boxW = W * 0.38;
+      const boxH = H * 0.35;
+      const yPos = H * 0.38;
+
+      const xA = W * 0.10;
+      const isHoverA = state.pointer.active && 
+                        state.pointer.x > xA && state.pointer.x < xA + boxW &&
+                        state.pointer.y > yPos && state.pointer.y < yPos + boxH;
+      if (isHoverA) currentFrameTarget = "challenge_A";
+
+      // ⚙️ ปรับปรุงสไตล์: ใช้สีฟ้าไซแอนแบบเดียวกันทั้งตัวเลือก A และ B เพื่อป้องกันการใบ้คำตอบล่วงหน้า (ตามที่ผู้ใช้ร้องขอ)
+      ctx.fillStyle = isHoverA ? "rgba(6, 182, 212, 0.2)" : "rgba(30, 41, 59, 0.8)";
+      ctx.fillRect(xA, yPos, boxW, boxH);
+      ctx.strokeStyle = isHoverA ? "#06b6d4" : "rgba(148, 163, 184, 0.3)";
+      ctx.lineWidth = isHoverA ? 2 : 1;
+      ctx.strokeRect(xA, yPos, boxW, boxH);
+
+      ctx.fillStyle = isHoverA ? "#22d3ee" : "#cbd5e1";
+      drawVectorText(ctx, "ตัวเลือกที่ 1: เป็นไปได้", xA + boxW / 2, yPos + boxH * 0.35, 14, "center");
+      ctx.fillStyle = "#94a3b8";
+      drawVectorText(ctx, "(เช่น หากระบบเคลื่อนที่เร็วมากหรือบิดเวลา)", xA + boxW / 2, yPos + boxH * 0.6, 11, "center");
+
+      const xB = W * 0.52;
+      const isHoverB = state.pointer.active && 
+                        state.pointer.x > xB && state.pointer.x < xB + boxW &&
+                        state.pointer.y > yPos && state.pointer.y < yPos + boxH;
+      if (isHoverB) currentFrameTarget = "challenge_B";
+
+      // ⚙️ ปรับปรุงสไตล์: ตัวเลือก B ใช้สีฟ้าไซแอนแบบเดียวกันกับตัวเลือก A เพื่อป้องกันการใบ้คำตอบ
+      ctx.fillStyle = isHoverB ? "rgba(6, 182, 212, 0.2)" : "rgba(30, 41, 59, 0.8)";
+      ctx.fillRect(xB, yPos, boxW, boxH);
+      ctx.strokeStyle = isHoverB ? "#06b6d4" : "rgba(148, 163, 184, 0.3)";
+      ctx.lineWidth = isHoverB ? 2 : 1;
+      ctx.strokeRect(xB, yPos, boxW, boxH);
+
+      ctx.fillStyle = isHoverB ? "#22d3ee" : "#cbd5e1";
+      drawVectorText(ctx, "ตัวเลือกที่ 2: เป็นไปไม่ได้เด็ดขาด", xB + boxW / 2, yPos + boxH * 0.35, 14, "center");
+      ctx.fillStyle = "#94a3b8";
+      drawVectorText(ctx, "(เพราะเส้นตรงคือระยะทางที่สั้นที่สุดเสมอ)", xB + boxW / 2, yPos + boxH * 0.6, 11, "center");
+
+      handleDwellClick(currentFrameTarget, (targetId) => {
+        if (targetId === 'challenge_B') {
+          playBeep('correct');
+          updateScore(200);
+          mission1.case3Passed = true;
+          // ✨ แสดงสัญลักษณ์เวกเตอร์ Unicode s\u20D7 (s⃗) เสมอ
+          showToast("ถูกต้องที่สุด! ระยะทางต้องมากกว่าหรือเท่ากับการกระจัดเสมอ! (+200 XP)");
+          setTimeout(() => {
+            switchPhase('path_result');
+          }, 2500);
+        } else {
+          playBeep('wrong');
+          showToast("คำตอบไม่ถูกต้อง! ลองพิจารณาหลักการทางเรขาคณิตใหม่อีกครั้งจ้า");
+        }
+      });
+    }
+
+    function drawPathResultPhase() {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.fillRect(50, 40, canvasElement.width - 100, canvasElement.height - 80);
+      ctx.strokeStyle = "#a855f7";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(50, 40, canvasElement.width - 100, canvasElement.height - 80);
+
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "สรุปผลการศึกษา 3 กรณีเชิงประจักษ์", canvasElement.width / 2, 80, 18, "center");
+
+      const wMid = canvasElement.width / 2;
+
+      ctx.fillStyle = "#06b6d4";
+      ctx.fillRect(70, 110, wMid - 100, 3);
+      ctx.fillStyle = "#a5f3fc";
+      drawVectorText(ctx, "ปริมาณสเกลาร์: อัตราเร็ว (v)", 80, 140, 15, "left");
+      ctx.fillStyle = "#cbd5e1";
+      drawVectorText(ctx, `- ระยะทางที่เคลื่อนที่จริง s = ${state.physicsData.distance.toFixed(2)} ม.`, 80, 175, 12, "left");
+      drawVectorText(ctx, `- เวลาทั้งหมดที่ใช้จริง t = ${state.physicsData.timeDistance.toFixed(2)} วิ`, 80, 205, 12, "left");
+      ctx.fillStyle = "#22d3ee";
+      drawVectorText(ctx, `สูตรอัตราเร็ว: v = s/t = ${state.physicsData.speed.toFixed(2)} m/s`, 80, 245, 14, "left");
+
+      ctx.fillStyle = "#ec4899";
+      ctx.fillRect(wMid + 30, 110, wMid - 100, 3);
+      ctx.fillStyle = "#fbcfe8";
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง "ความเร็ว ([v] -> v⃗)" ของแผงสรุปผล 3 กรณีด้วยระบบวาดอัตโนมัติ
+      drawVectorText(ctx, "ปริมาณเวกเตอร์: ความเร็ว ([v])", wMid + 40, 140, 15, "left");
+      
+      ctx.fillStyle = "#cbd5e1";
+      // ✨ การวาดการกระจัดและ offset แบบอัจฉริยะลื่นไหลไร้รอยต่อ
+      drawVectorText(ctx, `- การกระจัดแนวสั้นที่สุด [s] = ${state.physicsData.displacement.toFixed(2)} ม.`, wMid + 40, 175, 12, "left");
+      drawVectorText(ctx, `- เวลาจากแนวเริ่มต้นถึงสิ้นสุด t = ${state.physicsData.timeDisplacement.toFixed(2)} วิ`, wMid + 40, 205, 12, "left");
+
+      ctx.fillStyle = "#f472b6";
+      // ✨ วาดสัญญลักษณ์เวกเตอร์สูตรความเร็วเฉลี่ยได้อย่างคล่องตัว
+      drawVectorText(ctx, `สูตรความเร็ว: [v] = ${state.physicsData.velocity.toFixed(2)} m/s [${state.physicsData.direction}]`, wMid + 40, 245, 14, "left");
+
+      ctx.fillStyle = "rgba(6, 182, 212, 0.1)";
+      ctx.fillRect(70, 280, canvasElement.width - 140, 50);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.3)";
+      ctx.strokeRect(70, 280, canvasElement.width - 140, 50);
+
+      ctx.fillStyle = "#ffffff";
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง ( s ≥ [s] ) ในบทสรุปท้ายกระดาน
+      drawVectorText(ctx, "บทสรุป: ระยะทางจริงจะมากกว่าหรือเท่ากับการกระจัดเสมอ ( s ≥ [s] ) และความเร็วต้องระบุทิศทางด้วยเสมอ!", canvasElement.width / 2, 310, 12, "center");
+    }
+
+    function drawVectorCatchPhase(dt) {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.85)";
+      ctx.fillRect(20, 20, canvasElement.width - 40, 50);
+      ctx.strokeStyle = "#ec4899";
+      ctx.strokeRect(20, 20, canvasElement.width - 40, 50);
+
+      ctx.fillStyle = "#ffffff";
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง "คริสตัลปริมาณเวกเตอร์ (เช่น [s], [v])"
+      drawVectorText(ctx, `สะสมคริสตัลปริมาณเวกเตอร์ (เช่น [s], [v]) เวกเตอร์สะสมได้: ${mission2.currentMatches} ชิ้น`, canvasElement.width / 2, 42, 15, "center");
+      ctx.fillStyle = "#f472b6";
+      drawVectorText(ctx, `เวลาที่เหลือประคองเตาปฏิกรณ์: ${Math.max(0, Math.ceil(mission2.timer))} วินาที`, canvasElement.width / 2, 60, 13, "center");
+
+      if (Date.now() - mission2.lastSpawn > 1400 && mission2.crystals.length < 6) {
+        const item = mission2.itemsPool[Math.floor(Math.random() * mission2.itemsPool.length)];
+        mission2.crystals.push({
+          x: 80 + Math.random() * (canvasElement.width - 160),
+          y: canvasElement.height + 40,
+          speed: 2.0 + Math.random() * 2.0,
+          radius: 35,
+          text: item.text,
+          type: item.type,
+          id: `crystal_${Math.random().toString(36).substr(2, 9)}`
+        });
+        mission2.lastSpawn = Date.now();
+      }
+
+      for (let i = mission2.crystals.length - 1; i >= 0; i--) {
+        const c = mission2.crystals[i];
+        c.y -= c.speed; 
+
+        const distance = Math.hypot(state.pointer.x - c.x, state.pointer.y - c.y);
+        const isHovered = state.pointer.active && distance < c.radius;
+
+        if (isHovered) {
+          if (c.type === mission2.targetType) {
+            playBeep('correct');
+            updateScore(150);
+            mission2.scoreInPhase += 150;
+            mission2.currentMatches++;
+            showToast("ถูกต้อง! " + c.text + " คือเวกเตอร์");
+          } else {
+            playBeep('wrong');
+            updateScore(-50);
+            mission2.scoreInPhase -= 50;
+            showToast("ระวัง! " + c.text + " เป็นสเกลาร์");
+          }
+          mission2.crystals.splice(i, 1);
+          continue;
+        }
+
+        ctx.strokeStyle = "rgba(236, 72, 153, 0.85)";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        for (let j = 0; j < 6; j++) {
+          const angle = (Math.PI / 3) * j;
+          const hx = c.x + Math.cos(angle) * c.radius;
+          const hy = c.y + Math.sin(angle) * c.radius;
+          if (j === 0) ctx.moveTo(hx, hy);
+          else ctx.lineTo(hx, hy);
+        }
+        ctx.closePath();
+        ctx.stroke();
+
+        ctx.fillStyle = "rgba(236, 72, 153, 0.15)";
+        ctx.fill();
+
+        ctx.fillStyle = "#ffffff";
+        drawVectorText(ctx, c.text, c.x, c.y + 4, 12, "center");
+
+        if (c.y < -50) {
+          mission2.crystals.splice(i, 1);
+        }
+      }
+
+      mission2.timer -= dt;
+      if (mission2.timer <= 0) {
+        playBeep('pop');
+        showToast("หมดเวลารอบคัดเลือกย่อย! นำท่านเข้าสู่หน้าจำแนกความรู้");
+        setTimeout(() => {
+          switchPhase('vector_summary');
+        }, 1200);
+      }
+    }
+
+    function drawVectorSummaryPhase(currentFrameTarget) {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+      ctx.fillRect(40, 25, canvasElement.width - 80, canvasElement.height - 50);
+      ctx.strokeStyle = "#22d3ee";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(40, 25, canvasElement.width - 80, canvasElement.height - 50);
+
+      ctx.fillStyle = "#fbbf24";
+      drawVectorText(ctx, "⚡️ สรุปภารกิจล่าคริสตัลฟิสิกส์ ⚡️", canvasElement.width / 2, 60, 18, "center");
+
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, `คะแนนที่ได้รับจากด่านนี้: ${mission2.scoreInPhase} XP (ล่าเวกเตอร์สำเร็จ ${mission2.currentMatches} ชิ้น)`, canvasElement.width / 2, 85, 13, "center");
+
+      const midX = canvasElement.width / 2;
+      const tY = 110;
+      const colW = (canvasElement.width - 160) / 2;
+
+      ctx.fillStyle = "rgba(6, 182, 212, 0.15)";
+      ctx.fillRect(60, tY, colW, 160);
+      ctx.strokeStyle = "rgba(6, 182, 212, 0.4)";
+      ctx.strokeRect(60, tY, colW, 160);
+
+      ctx.fillStyle = "#22d3ee";
+      drawVectorText(ctx, "ปริมาณสเกลาร์ (มีแต่ขนาด)", 60 + colW/2, tY + 25, 14, "center");
+      
+      ctx.fillStyle = "#cbd5e1";
+      drawVectorText(ctx, "- ระยะทาง (Distance: s)", 60 + colW/2, tY + 55, 12, "center");
+      drawVectorText(ctx, "- อัตราเร็ว (Speed: v)", 60 + colW/2, tY + 80, 12, "center");
+      drawVectorText(ctx, "- มวล (Mass: m)", 60 + colW/2, tY + 105, 12, "center");
+      drawVectorText(ctx, "- เวลา (Time: t)", 60 + colW/2, tY + 130, 12, "center");
+
+      ctx.fillStyle = "rgba(236, 72, 153, 0.15)";
+      ctx.fillRect(60 + colW + 40, tY, colW, 160);
+      ctx.strokeStyle = "rgba(236, 72, 153, 0.4)";
+      ctx.strokeRect(60 + colW + 40, tY, colW, 160);
+
+      ctx.fillStyle = "#f472b6";
+      drawVectorText(ctx, "ปริมาณเวกเตอร์ (มีขนาด + ทิศทาง)", 60 + colW + 40 + colW/2, tY + 25, 14, "center");
+
+      // ✨ เพิ่มสัญลักษณ์เวกเตอร์ตรง "การกระจัด (Displacement: [s] -> s⃗)" และ "ความเร็ว (Velocity: [v] -> v⃗)" ในหน้าสรุปแบบตารางวาดสด
+      ctx.fillStyle = "#cbd5e1";
+      drawVectorText(ctx, "- การกระจัด (Displacement: [s])", 60 + colW + 40 + colW/2, tY + 55, 12, "center");
+      drawVectorText(ctx, "- ความเร็ว (Velocity: [v])", 60 + colW + 40 + colW/2, tY + 80, 12, "center");
+      drawVectorText(ctx, "- แรงผลัก (Force: [F])", 60 + colW + 40 + colW/2, tY + 105, 12, "center");
+      drawVectorText(ctx, "- ความเร่ง (Acceleration: [a])", 60 + colW + 40 + colW/2, tY + 130, 12, "center");
+
+      const btnX = midX - 160;
+      const btnY = canvasElement.height - 75;
+      const btnW = 320;
+      const btnH = 40;
+
+      const isHoverBtn = state.pointer.active && 
+                        state.pointer.x > btnX && state.pointer.x < btnX + btnW &&
+                        state.pointer.y > btnY && state.pointer.y < btnY + btnH;
+      if (isHoverBtn) currentFrameTarget = "btn_start_quiz";
+
+      ctx.fillStyle = isHoverBtn ? "#f59e0b" : "#eab308";
+      ctx.fillRect(btnX, btnY, btnW, btnH);
+      ctx.strokeStyle = "#ffffff";
+      ctx.strokeRect(btnX, btnY, btnW, btnH);
+
+      ctx.fillStyle = "#0f172a";
+      drawVectorText(ctx, "🎯 ฉันพร้อมประเมินผลสัมฤทธิ์แล้ว (10 ข้อ) 🎯", midX, btnY + 25, 14, "center");
+
+      handleDwellClick(currentFrameTarget, (targetId) => {
+        if (targetId === "btn_start_quiz") {
+          playBeep('correct');
+          state.quizIndex = 0;
+          state.quizCorrectCount = 0;
+          state.quizTimer = 30.0; // ข้อที่ 1 ตั้งต้นที่ 30 วินาที
+          switchPhase('quiz');
+        }
+      });
+    }
+
+    function drawQuizPhase(currentFrameTarget, dt) {
+      const qData = questions[state.quizIndex];
+      
+      ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
+      ctx.fillRect(40, 30, canvasElement.width - 80, canvasElement.height - 70);
+      ctx.strokeStyle = "#eab308";
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(40, 30, canvasElement.width - 80, canvasElement.height - 70);
+
+      ctx.fillStyle = "#ffffff";
+      
+      const maxQWidth = canvasElement.width - 120;
+      if (ctx.measureText(qData.q).width > maxQWidth) {
+        drawVectorText(ctx, qData.q.substring(0, 50), canvasElement.width / 2, 65, 15, "center");
+        drawVectorText(ctx, qData.q.substring(50), canvasElement.width / 2, 85, 15, "center");
+      } else {
+        drawVectorText(ctx, qData.q, canvasElement.width / 2, 75, 15, "center");
+      }
+
+      const timerWidth = canvasElement.width - 160;
+      const timerX = 80;
+      const timerY = 105;
+      // ข้อ 7-10 (ดัชนี 6-9) จะได้เวลาข้อละ 60 วินาที (1 นาที) ส่วนข้ออื่น ๆ ได้ 30 วินาที
+      const maxTimer = (state.quizIndex >= 6) ? 60.0 : 30.0;
+      const progress = state.quizTimer / maxTimer;
+
+      ctx.fillStyle = "rgba(51, 65, 85, 0.4)";
+      ctx.fillRect(timerX, timerY, timerWidth, 8);
+      // เปลี่ยนเป็นสีแดงเตือนเมื่อเวลาเหลือต่ำกว่า 25% ของโควตาเวลาข้อนั้น ๆ
+      ctx.fillStyle = state.quizTimer < (maxTimer * 0.25) ? "#ef4444" : "#eab308";
+      ctx.fillRect(timerX, timerY, timerWidth * progress, 8);
+
+      ctx.fillStyle = "#cbd5e1";
+      drawVectorText(ctx, `เวลาคิดค้นข้อนี้คงเหลือ: ${state.quizTimer.toFixed(1)} วินาที`, canvasElement.width / 2, 128, 11, "center");
+
+      const startY = 145;
+      const optionHeight = (canvasElement.height - 250) / 3;
+      const optionWidth = canvasElement.width - 160;
+
+      qData.options.forEach((opt, idx) => {
+        const optY = startY + (idx * (optionHeight + 10));
+        const optX = 80;
+
+        const isHovered = state.pointer.active && 
+                          state.pointer.x > optX && state.pointer.x < optX + optionWidth &&
+                          state.pointer.y > optY && state.pointer.y < optY + optionHeight;
+
+        if (isHovered) {
+          currentFrameTarget = `quiz_${idx}`;
+        }
+
+        ctx.fillStyle = isHovered ? "rgba(234, 179, 8, 0.2)" : "rgba(30, 41, 59, 0.8)";
+        ctx.fillRect(optX, optY, optionWidth, optionHeight);
+        ctx.strokeStyle = isHovered ? "#eab308" : "rgba(234, 179, 8, 0.3)";
+        ctx.lineWidth = isHovered ? 2.5 : 1;
+        ctx.strokeRect(optX, optY, optionWidth, optionHeight);
+
+        ctx.fillStyle = isHovered ? "#fef08a" : "#cbd5e1";
+        // ✨ วาดสัญญลักษณ์เวกเตอร์ในตัวเลือกควิซข้อสอบอย่างงดงามและกึ่งกลางแม่นยำ
+        drawVectorText(ctx, opt.text, optX + 25, optY + (optionHeight/2) + 5, 13, "left");
+      });
+
+      state.quizTimer -= dt;
+      if (state.quizTimer <= 0) {
+        playBeep('wrong');
+        showToast("หมดเวลาการวิเคราะห์ข้อนี้แล้ว! ย้ายข้อถัดไป");
+        advanceQuiz();
+      }
+
+      handleDwellClick(currentFrameTarget, (targetId) => {
+        const optIdx = parseInt(targetId.split('_')[1]);
+        const selectedOpt = qData.options[optIdx];
+
+        if (selectedOpt.correct) {
+          playBeep('correct');
+          updateScore(200);
+          state.quizCorrectCount++;
+          showToast("ถูกต้องยอดเยี่ยม!");
+        } else {
+          playBeep('wrong');
+          showToast("คำตอบยังไม่ถูกต้อง!");
+        }
+        advanceQuiz();
+      });
+    }
+
+    function advanceQuiz() {
+      if (state.quizIndex < questions.length - 1) {
+        state.quizIndex++;
+        // ปรับเวลาข้อถัดไป: ข้อ 7-10 (ดัชนี 6-9) จะได้ 60 วินาที ส่วนข้ออื่น ๆ ได้ 30 วินาที
+        state.quizTimer = (state.quizIndex >= 6) ? 60.0 : 30.0; 
+        switchPhase('quiz');
+      } else {
+        switchPhase('victory');
+      }
+    }
+
+    function drawVictoryPhase() {
+      ctx.fillStyle = "rgba(15, 23, 42, 0.95)";
+      ctx.fillRect(60, 40, canvasElement.width - 120, canvasElement.height - 80);
+      ctx.strokeStyle = "#10b981";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(60, 40, canvasElement.width - 120, canvasElement.height - 80);
+
+      ctx.fillStyle = "#fbbf24";
+      ctx.beginPath();
+      const trophyY = 100;
+      const trophyX = canvasElement.width / 2;
+      ctx.arc(trophyX, trophyY, 20, 0, Math.PI*2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, "ขอสดุดีแด่ผู้ผ่านด่าน!", canvasElement.width / 2, 160, 20, "center");
+      ctx.fillStyle = "#34d399";
+      drawVectorText(ctx, "คุณสอบผ่านหัวข้อ 'อัตราเร็วและความเร็ว ม.2' สำเร็จสมบูรณ์", canvasElement.width / 2, 195, 14, "center");
+      ctx.fillStyle = "#ffffff";
+      drawVectorText(ctx, `คะแนนแบบประเมิน: ${state.quizCorrectCount}/10 ข้อ`, canvasElement.width / 2, 240, 24, "center");
+      ctx.fillStyle = "#fbbf24";
+      drawVectorText(ctx, `ผลคะแนนเกียรติยศสะสม: ${state.score} XP`, canvasElement.width / 2, 280, 18, "center");
+      ctx.fillStyle = "#a5f3fc";
+      drawVectorText(ctx, "ระบบพร้อมแล้วสำหรับการกดปุ่มด้านล่างเพื่อรีเซตหลักสูตรใหม่อีกครั้ง", canvasElement.width / 2, 315, 11, "center");
+    }
+
+    // ✨ สวิตช์เครื่องยนต์เปลี่ยนฉาก (Phase Router Engine) และเรนเดอร์ KaTeX ทับหน้าต่าง Overlay ด้านล่างอย่างลงตัว
+    function switchPhase(phase) {
+      state.currentPhase = phase;
+      
+      const tag = document.getElementById('phase-tag');
+      const title = document.getElementById('phase-title');
+      const desc = document.getElementById('phase-desc');
+      const btnActionText = document.getElementById('btn-action-text');
+
+      // ล้างสถานะการเขียนเส้นค้างเดิมทุกครั้งที่มีการเปลี่ยนด่าน ป้องกันปัญหาเส้นกระโดดลากไปเองข้ามมิติ
+      mission1.pathTraveled = [];
+      mission1.tracingActive = false;
+      mission1.startTime = 0;
+
+      // รีเซตสไตล์เมนูด้านซ้ายตามขั้นบันไดด่าน
+      document.getElementById('step-tut').className = "p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2";
+      document.getElementById('step-dist').className = "p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2";
+      document.getElementById('step-catch').className = "p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2";
+      document.getElementById('step-quiz').className = "p-2.5 rounded border border-slate-800 bg-slate-900/40 text-slate-400 flex items-center gap-2";
+
+      if (phase === 'tutorial') {
+        document.getElementById('step-tut').className = "p-2.5 rounded border border-cyan-400/30 bg-cyan-950/20 text-cyan-300 flex items-center gap-2";
+        tag.innerHTML = renderMathInText("ภารกิจฝึกอบรม");
+        title.innerHTML = renderMathInText("เริ่มต้นใช้งาน: ทดสอบระบบตรวจจับมือ AR");
+        desc.innerHTML = renderMathInText("ยื่นมือขึ้นหน้ากล้องขยับปลายนิ้วชี้เพื่อจับพิกัด หรือคลิกสลับโหมดควบคุมเมาส์ด้านล่างกล้อง");
+        btnActionText.innerHTML = renderMathInText("ข้ามไปยังบทเรียนจำลอง");
+      } 
+      else if (phase === 'path_intro' || phase === 'path_case1' || phase === 'path_case2' || phase === 'path_case3' || phase === 'path_result') {
+        document.getElementById('step-dist').className = "p-2.5 rounded border border-cyan-400/30 bg-cyan-950/20 text-cyan-300 flex items-center gap-2";
+        tag.innerHTML = renderMathInText("ภารกิจที่ 1");
+        // ✨ เรนเดอร์สัญลักษณ์เวกเตอร์ด้วย KaTeX สวยงามตรงหัวข้อด้านล่าง
+        title.innerHTML = renderMathInText("กิจกรรม 2 กรณีท้าทาย: ระยะทาง ($s$) vs การกระจัด ($\\vec{s}$)");
+        desc.innerHTML = renderMathInText("ลากเส้นพิสูจน์ สังเกตการแปรผันของสูตรคำนวณอัตราเร็ว ($v$) และความเร็ว ($\\vec{v}$) ที่คำนวณสดจากภารกิจที่ 1 ด้านซ้าย");
+        btnActionText.innerHTML = (phase === 'path_result') ? renderMathInText("เข้าสู่ภารกิจเก็บคริสตัล") : renderMathInText("ข้าม");
+        
+        // กำหนด Scenario เพิ่มเติม
+        if (phase === 'path_case1') currentScenarioIndex = 0;
+        else if (phase === 'path_case2') {
+          currentScenarioIndex = 1;
+          mission1.caseProgress = 0; // เคลียร์สถานะย่อยของโค้ง/ตรง
+        }
+      } 
+      else if (phase === 'vector_catch' || phase === 'vector_summary') {
+        document.getElementById('step-catch').className = "p-2.5 rounded border border-cyan-400/30 bg-cyan-950/20 text-cyan-300 flex items-center gap-2";
+        tag.innerHTML = renderMathInText("ภารกิจที่ 2");
+        title.innerHTML = renderMathInText("นักล่าคริสตัลเวกเตอร์แห่งมิติเสมือน");
+        desc.innerHTML = renderMathInText("เล็งปลายนิ้วหรือเมาส์สะสมเฉพาะวัตถุที่มีทั้งขนาดและทิศทาง (เวกเตอร์) เพื่อประคองเตาปฏิกรณ์");
+        btnActionText.innerHTML = renderMathInText("ข้ามไปยังควิซประเมินผล");
+      } 
+      else if (phase === 'quiz') {
+        document.getElementById('step-quiz').className = "p-2.5 rounded border border-cyan-400/30 bg-cyan-950/20 text-cyan-300 flex items-center gap-2";
+        tag.innerHTML = renderMathInText("ภารกิจทดสอบประเมิน");
+        title.innerHTML = renderMathInText(`แบบประเมินวัดผลสัมฤทธิ์ฟิสิกส์ ม.2 (ข้อที่ ${state.quizIndex + 1}/10)`);
+        desc.innerHTML = renderMathInText("ชี้ค้างเลือกช้อยส์ข้อที่ถูกต้องที่สุดภายในเวลาประเมิน เพื่อสร้างเกียรติยศคะแนนสะสม");
+        btnActionText.innerHTML = renderMathInText("ข้ามควิซ");
+      }
+      else if (phase === 'victory') {
+        tag.innerHTML = renderMathInText("ภารกิจเสร็จสิ้น");
+        title.innerHTML = renderMathInText("จบหลักสูตรวิทยาศาสตร์ฟิสิกส์ ม.2 สมบูรณ์!");
+        desc.textContent = "ระบบสรุปผลคะแนนรวมสำเร็จ คุณครูและผู้เรียนสามารถคลิกรีเซตเพื่อย้อนกลับไปฝึกฝนใหม่ได้";
+        btnActionText.innerHTML = renderMathInText("♻️ เริ่มหลักสูตรใหม่อีกครั้ง");
+      }
+    }
+
+    // --- ตรรกะจัดการปุ่มควบคุมถอยหลัง-เดินหน้าหลักด้านล่างหน้าจอ ---
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      if (state.currentPhase === 'path_intro') switchPhase('tutorial');
+      else if (state.currentPhase === 'path_case1') switchPhase('path_intro');
+      else if (state.currentPhase === 'path_case2') switchPhase('path_case1');
+      else if (state.currentPhase === 'path_case3') switchPhase('path_case2');
+      else if (state.currentPhase === 'path_result') switchPhase('path_case3');
+      else if (state.currentPhase === 'vector_catch') switchPhase('path_result');
+      else if (state.currentPhase === 'vector_summary') switchPhase('vector_catch');
+      else if (state.currentPhase === 'quiz') switchPhase('vector_summary');
+    });
+
+    document.getElementById('btn-action').addEventListener('click', () => {
+      if (state.currentPhase === 'tutorial') switchPhase('path_intro');
+      else if (state.currentPhase === 'path_intro') switchPhase('path_case1');
+      else if (state.currentPhase === 'path_case1') switchPhase('path_case2');
+      else if (state.currentPhase === 'path_case2') switchPhase('path_case3');
+      else if (state.currentPhase === 'path_case3') switchPhase('path_result');
+      else if (state.currentPhase === 'path_result') switchPhase('vector_catch');
+      else if (state.currentPhase === 'vector_catch') switchPhase('vector_summary');
+      else if (state.currentPhase === 'vector_summary') switchPhase('quiz');
+      else if (state.currentPhase === 'quiz') switchPhase('victory');
+      else if (state.currentPhase === 'victory') {
+        state.score = 0;
+        state.quizIndex = 0;
+        state.quizCorrectCount = 0;
+        state.quizTimer = 60.0;
+        mission2.currentMatches = 0;
+        mission2.timer = 30.0;
+        tutBubbles[0].active = true;
+        tutBubbles[1].active = true;
+        updateScore(0);
+        switchPhase('tutorial');
+      }
+    });
+
+    // --- ตรรกะควบคุมหน้าต่างความรู้ป๊อปอัป (Modal UI Controller) ---
+    const knowledgeModal = document.getElementById('knowledge-modal');
+    document.getElementById('btn-knowledge').addEventListener('click', () => knowledgeModal.classList.remove('hidden'));
+    document.getElementById('btn-close-knowledge').addEventListener('click', () => knowledgeModal.classList.add('hidden'));
+    document.getElementById('btn-close-knowledge-ok').addEventListener('click', () => knowledgeModal.classList.add('hidden'));
+
+    // ==================== ✨ ตรรกะควบคุมระบบทัวร์ Onboarding นำทางและชี้ปุ่มสีเหลืองเสมือนจริง ✨ ====================
+    // ✨ ปรับปรุงชุดอาเรย์ Tour ให้บรรจุขั้นตอนไฮไลท์ปุ่มกล้องหน้า และ ปุ่มโหมดจำลอง เป็นขั้นตอนที่ 4 และ 5 ตามลำดับ
+    const tourSteps = [
+      {
+        elementId: 'btn-knowledge',
+        text: '📚 <strong>ปุ่มคลังความรู้ ม.2:</strong> สรุปเรื่องระยะทาง ($s$), การกระจัด ($\\vec{s}$), อัตราเร็ว ($v$), และความเร็ว ($\\vec{v}$) พร้อมสูตรที่ใช้ในการคำนวณ สามารถกดเข้ามาอ่านทำความเข้าใจล่วงหน้าได้ตลอดเวลาเลยนะจ๊ะ!',
+        placement: 'bottom'
+      },
+      {
+        elementId: 'tab-btn-ai',
+        text: '🤖 <strong>แท็บครูพี่ AI ติวเตอร์:</strong> AI ช่วยวิเคราะห์ข้อผิดพลาด แนะนำประเด็นที่ต้องกลับไปอ่านเพิ่ม และยังเปิดโอกาสให้คุณพิมพ์คุยซักถามฟิสิกส์ที่ไม่เข้าใจได้โดยตรงทันที!',
+        placement: 'right'
+      },
+      {
+        elementId: 'btn-action',
+        text: '⚡ <strong>ปุ่มนำทางภารกิจ:</strong> ปุ่มสีเหลืองเรืองแสงเด่นชัด ใช้พาผู้เรียนเดินทางไปยังด่านฟิสิกส์ถัดไปได้ทันทีอย่างไร้รอยต่อ!',
+        placement: 'bottom'
+      },
+      {
+        elementId: 'btn-start-ar',
+        text: '🔌 <strong>ปุ่มเริ่มโหมดกล้อง AR:</strong> หากอุปกรณ์คอมพิวเตอร์ของคุณมีกล้องหน้า ให้กดตรงนี้เพื่ออนุญาตสิทธิ์และเริ่มต้นใช้การตรวจจับปลายนิ้วชี้ด้วยเทคโนโลยีจับพิกัดมือ!',
+        placement: 'top'
+      },
+      {
+        elementId: 'btn-skip-ar',
+        text: '🎮 <strong>ปุ่มใช้โหมดจำลอง (Simulator):</strong> หากไม่มีกล้อง หรือต้องการความสะดวกสบาย ให้กดตรงนี้เพื่อลัดเข้าโหมดเมาส์',
+        placement: 'top'
+      }
+    ];
+
+    let currentTourStep = 0;
+
+    function startTour() {
+      currentTourStep = 0;
+      document.getElementById('tour-overlay').classList.remove('hidden');
+      showTourStep(0);
+    }
+
+    function showTourStep(index) {
+      currentTourStep = index;
+      const step = tourSteps[index];
+      const target = document.getElementById(step.elementId);
+      if (!target) return;
+
+      // 1. ควบคุมกรอบโปร่งแสงสีเหลือง (Highlighter) ครอบทับตำแหน่งปุ่มเป้าหมาย
+      const rect = target.getBoundingClientRect();
+      const padding = 6;
+      const highlighter = document.getElementById('tour-highlighter');
+      
+      highlighter.style.left = `${rect.left - padding + window.scrollX}px`;
+      highlighter.style.top = `${rect.top - padding + window.scrollY}px`;
+      highlighter.style.width = `${rect.width + padding * 2}px`;
+      highlighter.style.height = `${rect.height + padding * 2}px`;
+
+      // อัปเดตข้อมูลกล่องข้อความและ LaTeX
+      document.getElementById('tour-step-badge').textContent = `คู่มือนำทาง ขั้นที่ ${index + 1}/${tourSteps.length}`;
+      document.getElementById('tour-text').innerHTML = renderMathInText(step.text);
+
+      const prevBtn = document.getElementById('btn-tour-prev');
+      if (index === 0) {
+        prevBtn.classList.add('invisible');
+      } else {
+        prevBtn.classList.remove('invisible');
+      }
+
+      const nextText = document.getElementById('btn-tour-next-text');
+      if (index === tourSteps.length - 1) {
+        nextText.textContent = "เสร็จสิ้น 🎉";
+      } else {
+        nextText.textContent = "ถัดไป";
+      }
+
+      // 2. คำนวณพิกัดกล่องคำอธิบายคู่มือ และตำแหน่งของลูกศรชี้ (Arrow Placement)
+      const tooltip = document.getElementById('tour-tooltip');
+      const arrow = document.getElementById('tour-arrow');
+      const arrowSize = 10;
+      
+      let tooltipLeft = 0;
+      let tooltipTop = 0;
+
+      // รีเซตคลาสขอบเขตของทิศทางลูกศร
+      arrow.className = "absolute w-0 h-0 border-[10px] border-transparent";
+      arrow.style.top = 'auto';
+      arrow.style.bottom = 'auto';
+      arrow.style.left = 'auto';
+      arrow.style.right = 'auto';
+
+      if (step.placement === 'bottom') {
+        tooltipLeft = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
+        tooltipTop = rect.bottom + padding + 15;
+
+        // ลูกศรชี้ขึ้นข้างบนหาเป้าหมาย
+        arrow.style.left = `${tooltip.offsetWidth / 2 - arrowSize}px`;
+        arrow.style.top = `-${arrowSize * 2}px`;
+        arrow.style.borderBottomColor = 'rgba(234, 179, 8, 0.8)';
+      } 
+      else if (step.placement === 'right') {
+        tooltipLeft = rect.right + padding + 15;
+        tooltipTop = rect.top + rect.height / 2 - tooltip.offsetHeight / 2;
+
+        // ลูกศรชี้ไปทางซ้ายหาเป้าหมาย
+        arrow.style.left = `-${arrowSize * 2}px`;
+        arrow.style.top = `${tooltip.offsetHeight / 2 - arrowSize}px`;
+        arrow.style.borderRightColor = 'rgba(234, 179, 8, 0.8)';
+      } 
+      else if (step.placement === 'top') {
+        tooltipLeft = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
+        tooltipTop = rect.top - tooltip.offsetHeight - padding - 15;
+
+        // ลูกศรชี้ลงข้างล่างหาเป้าหมาย
+        arrow.style.left = `${tooltip.offsetWidth / 2 - arrowSize}px`;
+        arrow.style.bottom = `-${arrowSize * 2}px`;
+        arrow.style.borderTopColor = 'rgba(234, 179, 8, 0.8)';
+      }
+
+      // ควบคุมความปลอดภัยไม่ให้หลุดขอบเขตหน้าจอเบราว์เซอร์
+      if (tooltipLeft < 10) tooltipLeft = 10;
+      if (tooltipLeft + tooltip.offsetWidth > window.innerWidth - 10) {
+        tooltipLeft = window.innerWidth - tooltip.offsetWidth - 10;
+        // ปรับสมดุลหัวลูกศรให้อยู่ตำแหน่งกึ่งกลางของปุ่มเสมอแม้กล่องข้อความโดนบีบพิกัด
+        if (step.placement === 'bottom' || step.placement === 'top') {
+          const arrowRelativeX = (rect.left + rect.width / 2) - tooltipLeft - arrowSize;
+          arrow.style.left = `${Math.max(15, Math.min(tooltip.offsetWidth - 30, arrowRelativeX))}px`;
+        }
+      }
+      if (tooltipTop < 10) tooltipTop = 10;
+
+      tooltip.style.left = `${tooltipLeft + window.scrollX}px`;
+      tooltip.style.top = `${tooltipTop + window.scrollY}px`;
+
+      lucide.createIcons(); // โหลดไอคอน Chevron
+    }
+
+    function closeTour() {
+      document.getElementById('tour-overlay').classList.add('hidden');
+      playBeep('pop');
+    }
+
+    // ลงทะเบียนสวิตช์เหตุการณ์นำทางทัวร์
+    document.getElementById('btn-tour-prev').addEventListener('click', () => {
+      if (currentTourStep > 0) {
+        playBeep('hover');
+        showTourStep(currentTourStep - 1);
+      }
+    });
+
+    document.getElementById('btn-tour-next').addEventListener('click', () => {
+      if (currentTourStep < tourSteps.length - 1) {
+        playBeep('hover');
+        showTourStep(currentTourStep + 1);
+      } else {
+        closeTour();
+        showToast("เริ่มต้นสำเร็จ! ยื่นมือหน้ากล้องหรือลากเมาส์ลุยด่านได้ทันทีจ้า 🚀");
+      }
+    });
+
+    document.getElementById('btn-close-tour').addEventListener('click', closeTour);
+
+    // ดักจับการย่อหน้าจอเพื่อคำนวณตำแหน่งทัวร์สีเหลืองแบบเรียลไทม์
+    window.addEventListener('resize', () => {
+      if (!document.getElementById('tour-overlay').classList.contains('hidden')) {
+        showTourStep(currentTourStep);
+      }
+    });
+
+    // --- ฟังก์ชันหลักในการวาดลูปหลัก (Game Engine Rendering Grid) ---
+    function gameLoop() {
+      const now = Date.now();
+      const dt = (now - lastFrameTime) / 1000;
+      lastFrameTime = now;
+
+      ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+      if (state.cameraActive && state.inputMode === 'hand') {
+        ctx.save();
+        ctx.scale(-1, 1);
+        ctx.drawImage(videoElement, -canvasElement.width, 0, canvasElement.width, canvasElement.height);
+        ctx.restore();
+        
+        ctx.fillStyle = "rgba(15, 23, 42, 0.45)";
+        ctx.fillRect(0, 0, canvasElement.width, canvasElement.height);
+      } else {
+        drawSimulationFallback(now);
+      }
+
+      pulseScale += 0.015 * pulseDirection;
+      if (pulseScale > 1.15 || pulseScale < 0.95) pulseDirection *= -1;
+
+      let currentFrameTarget = null;
+
+      const ptrStatus = document.getElementById('ptr-status');
+      const ptrIndicator = document.getElementById('ptr-indicator');
+      if (state.handDetected && state.pointer.active) {
+        ptrStatus.textContent = `ตรวจพบ (${Math.round(state.pointer.x)}, ${Math.round(state.pointer.y)})`;
+        ptrIndicator.className = "w-2.5 h-2.5 rounded-full bg-emerald-400";
+      } else {
+        ptrStatus.textContent = state.inputMode === 'mouse' ? "เมาส์พร้อมควบคุม" : "มองไม่เห็นมือ";
+        ptrIndicator.className = state.inputMode === 'mouse' ? "w-2.5 h-2.5 rounded-full bg-amber-400" : "w-2.5 h-2.5 rounded-full bg-rose-500";
+      }
+
+      if (state.currentPhase === 'tutorial') {
+        drawTutorialPhase(currentFrameTarget);
+      }
+      else if (state.currentPhase === 'path_intro') {
+        drawPathIntroPhase();
+      }
+      else if (state.currentPhase === 'path_case1') {
+        drawPathCase1Phase();
+      }
+      else if (state.currentPhase === 'path_case2') {
+        drawPathCase2Phase();
+      }
+      else if (state.currentPhase === 'path_case3') {
+        drawPathCase3Phase(currentFrameTarget);
+      }
+      else if (state.currentPhase === 'path_result') {
+        drawPathResultPhase();
+      }
+      else if (state.currentPhase === 'vector_catch') {
+        drawVectorCatchPhase(dt);
+      }
+      else if (state.currentPhase === 'vector_summary') {
+        drawVectorSummaryPhase(currentFrameTarget);
+      }
+      else if (state.currentPhase === 'quiz') {
+        drawQuizPhase(currentFrameTarget, dt);
+      }
+      else if (state.currentPhase === 'victory') {
+        drawVictoryPhase();
+      }
+
+      if (state.pointer.active) {
+        drawPointerCursor();
+      }
+
+      updateScienceFormulas();
+      requestAnimationFrame(gameLoop);
+    }
+
+    // --- ฟังก์ชันตรวจจับการค้างนิ้วชี้ (Dwell Click Engine) ---
+    function handleDwellClick(currentFrameTarget, triggerCallback) {
+      if (currentFrameTarget) {
+        if (state.pointer.targetId === currentFrameTarget) {
+          state.pointer.timer++;
+          if (state.pointer.timer >= 30) { 
+            triggerCallback(currentFrameTarget);
+            state.pointer.timer = 0;
+            state.pointer.targetId = null;
+          }
+        } else {
+          state.pointer.targetId = currentFrameTarget;
+          state.pointer.timer = 1;
+        }
+      } else {
+        state.pointer.timer = 0;
+        state.pointer.targetId = null;
+      }
+    }
+
+    // --- หน้าจอเริ่มประมวลผลระบบและโหลด KaTeX ---
+    window.addEventListener('load', () => {
+      resizeCanvas();
+      
+      // ดึงสัญญลักษณ์ Lucide Icons ใหม่หลังทำการเปลี่ยนโครงสร้าง HTML
+      lucide.createIcons();
+
+      // ✨ ปลดล็อกการบล็อกเสียงอัตโนมัติของเบราว์เซอร์เมื่อผู้เรียนเริ่มมีปฏิสัมพันธ์กับปุ่มหรือหน้าจอเป็นครั้งแรก
+      const unlockAudio = () => {
+        if (audioCtx.state === 'suspended') {
+          audioCtx.resume();
+        }
+      };
+      window.addEventListener('click', unlockAudio, { once: true });
+      window.addEventListener('touchstart', unlockAudio, { once: true });
+
+      // ✨ เริ่มต้นขั้นตอนระบบทัวร์ Onboarding ทันทีที่โหลดเข้าสำเร็จโดยไม่ต้องผ่าน Modal ตัวเลือกคู่มือเดิม
+      setTimeout(startTour, 600);
+      
+      try {
+        katex.render("s", document.getElementById('kmodal-s'), { throwOnError: false });
+        katex.render("\\vec{s}", document.getElementById('kmodal-vec-s'), { throwOnError: false });
+        katex.render("v", document.getElementById('kmodal-v'), { throwOnError: false });
+        katex.render("\\vec{v}", document.getElementById('kmodal-vec-v'), { throwOnError: false });
+        katex.render("v = \\frac{s}{t}", document.getElementById('katex-kmodal-speed'), { throwOnError: false });
+        katex.render("\\vec{v} = \\frac{\\vec{s}}{t}", document.getElementById('katex-kmodal-velocity'), { throwOnError: false });
+        
+        katex.render("s", document.getElementById('katex-s-label'), { throwOnError: false });
+        katex.render("t", document.getElementById('katex-t-speed-label'), { throwOnError: false });
+        katex.render("\\vec{s}", document.getElementById('katex-disp-label'), { throwOnError: false });
+        katex.render("t", document.getElementById('katex-t-velocity-label'), { throwOnError: false });
+
+        // เรนเดอร์ตัวแปรเวกเตอร์ในหัวข้อแผงควบคุมฝั่งซ้ายเพิ่มเติม
+        katex.render("v", document.getElementById('katex-v-scalar-title-label'), { throwOnError: false });
+        katex.render("\\vec{v}", document.getElementById('katex-v-vec-title-label'), { throwOnError: false });
+
+        // ✨ เรนเดอร์สัญลักษณ์เวกเตอร์ด้วย KaTeX บนรายการเมนูขั้นตอนภารกิจซ้ายมือ
+        document.getElementById('step-tut-text').innerHTML = renderMathInText("แนะนำ & ทดสอบระบบตรวจมือ");
+        document.getElementById('step-dist-text').innerHTML = renderMathInText("ภารกิจ 1: 2 กรณีท้าทาย ($s$ vs $\\vec{s}$)");
+        document.getElementById('step-catch-text').innerHTML = renderMathInText("ภารกิจ 2: นักล่าปริมาณเวกเตอร์ ($\\vec{v}$)");
+        document.getElementById('step-quiz-text').innerHTML = renderMathInText("แบบประเมินผลสัมฤทธิ์ (10 ข้อ)");
+      } catch (e) {
+        console.error("LaTeX rendering failed on load", e);
+      }
+      
+      updateScienceFormulas();
+
+      requestAnimationFrame(processVideoFrame);
+      requestAnimationFrame(gameLoop);
+    });
+  </script>
+</body>
+</html>
